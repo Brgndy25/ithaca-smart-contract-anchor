@@ -1,4 +1,4 @@
-use crate::constants::ADMIN_ROLE;
+use crate::constants::*;
 use crate::state::access_controller_state::{AccessController, Member, Role};
 use anchor_lang::prelude::*;
 
@@ -29,7 +29,7 @@ pub struct InitAccessController<'info> {
     #[account(
         init,
         payer = admin,
-        seeds = [b"member".as_ref(), role.key().as_ref(), /*admin.key().as_ref()*/],
+        seeds = [b"member".as_ref(), role.key().as_ref()],
         bump,
         space = AccessController::INIT_SPACE,
     )]
@@ -47,7 +47,6 @@ impl<'info> InitAccessController<'info> {
         });
         self.role.set_inner(Role {
             role: ADMIN_ROLE.to_string(),
-            member_count: 1,
             bump: bumps.role,
         });
         self.member.set_inner(Member {

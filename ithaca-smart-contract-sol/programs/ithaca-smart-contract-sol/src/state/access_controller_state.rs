@@ -12,7 +12,6 @@ pub struct AccessController {
 #[account]
 pub struct Role {
     pub role: String,
-    pub member_count: u64,
     pub bump: u8,
 }
 
@@ -32,7 +31,6 @@ impl Space for AccessController {
 impl Space for Role {
     const INIT_SPACE: usize = 8 + // account discriminator
     32 + // role string (expected max size of 32 bytes)
-    8 + // member count
     1; // bump
 }
 
