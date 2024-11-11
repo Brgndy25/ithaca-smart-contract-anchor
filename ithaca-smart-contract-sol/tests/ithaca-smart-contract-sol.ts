@@ -66,22 +66,34 @@ describe("ithaca-smart-contract-sol", () => {
   //Admin Keypair
   const admin = Keypair.generate();
 
+  // Utility Account Keypair
+  const utilityAccount = Keypair.generate();
+
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
   const UTILITY_ACCOUNT_ROLE: string = "UTILITY_ACCOUNT_ROLE";
   const LIQUIDATOR_ROLE: string = "LIQUIDATOR_ROLE";
 
   let accessControllerAccount: PublicKey;
-  let roleAccount: PublicKey;
-  let memberAccount: PublicKey;
+
+  let roleAccountAdminAdmin: PublicKey;
+  let roleAccountAdmin: PublicKey;
+  let memberAccountAdmin: PublicKey;
+
   let fetchedaccessControllerAccount;
-  let fetchedRoleAccount;
-  let fetchedMemberAccount;
+  let fetchedRoleAccountAdmin;
+  let fetchedmemberAccountAdmin;
+
+  let roleAccountUtilityAccount: PublicKey;
+  let memberAccountUtilityAccount: PublicKey;
+
+  let fetchedRoleAccountUtilityAccount;
+  let fetchedMemberAccountUtilityAccount;
 
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
     await Promise.all(
-      [admin].map(async (account) => {
+      [admin, utilityAccount].map(async (account) => {
         await provider.connection
           .requestAirdrop(account.publicKey, 100 * LAMPORTS_PER_SOL)
           .then(confirmTx);
@@ -89,10 +101,10 @@ describe("ithaca-smart-contract-sol", () => {
     );
 
     assert.equal(await getAccountBalance(provider.connection, admin.publicKey), 100, "Airdrop failed");
-    console.log(admin.publicKey.toString());
+    assert.equal(await getAccountBalance(provider.connection, utilityAccount.publicKey), 100, "Airdrop failed");
   });
 
-  it("Find and Fetch PDAs", async () => {
+  it("Find Access Controller and Admin member and role PDAs", async () => {
 
     accessControllerAccount = PublicKey.findProgramAddressSync(
       [
@@ -103,52 +115,100 @@ describe("ithaca-smart-contract-sol", () => {
     )[0];
 
 
-    roleAccount = PublicKey.findProgramAddressSync(
+    roleAccountAdmin = PublicKey.findProgramAddressSync(
       [
         anchor.utils.bytes.utf8.encode("role"),
         accessControllerAccount.toBuffer(),
+        anchor.utils.bytes.utf8.encode(ADMIN_ROLE),
+
       ],
       program.programId
     )[0];
 
-    memberAccount = PublicKey.findProgramAddressSync(
+    memberAccountAdmin = PublicKey.findProgramAddressSync(
       [
         anchor.utils.bytes.utf8.encode("member"),
-        roleAccount.toBuffer(),
+        roleAccountAdmin.toBuffer(),
         admin.publicKey.toBuffer(),
       ],
       program.programId
     )[0];
 
     console.log("Access Controller Account:", accessControllerAccount.toString());
-    console.log("Role Account:", roleAccount.toString());
-    console.log("Member Account:", memberAccount.toString());
+    console.log("Admin Role Account:", roleAccountAdmin.toString());
+    console.log("Admin Member Account:", memberAccountAdmin.toString());
 
   });
 
   it("Access Controller Is Initialized", async () => {
-    const initAccessControllertx = await program.methods.initAccessController().accountsPartial({
+    const initAccessControllerTx = await program.methods.initAccessController().accountsPartial({
       accessController: accessControllerAccount,
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     }).signers([admin]).rpc().then(confirmTx).then(log);
 
-    console.log("Your transaction signature", initAccessControllertx);
-
+    console.log("Your transaction signature", initAccessControllerTx);
 
     fetchedaccessControllerAccount = await program.account.accessController.fetch(accessControllerAccount);
 
-    fetchedRoleAccount = await program.account.role.fetch(roleAccount);
+    fetchedRoleAccountAdmin = await program.account.role.fetch(roleAccountAdmin);
 
-    fetchedMemberAccount = await program.account.member.fetch(memberAccount);
+    fetchedmemberAccountAdmin = await program.account.member.fetch(memberAccountAdmin);
 
     assert.equal(fetchedaccessControllerAccount.admin.toString(), admin.publicKey.toString(), "Access Controller not initialized");
 
-    assert.equal(fetchedRoleAccount.role.toString(), ADMIN_ROLE, "Role not initialized");
+    assert.equal(fetchedRoleAccountAdmin.role.toString(), ADMIN_ROLE, "Role not initialized");
 
-    assert.equal(fetchedMemberAccount.member.toString(), admin.publicKey.toString(), "Member not initialized");
+    assert.equal(fetchedmemberAccountAdmin.member.toString(), admin.publicKey.toString(), "Member not initialized");
 
-    assert.equal(fetchedRoleAccount.memberCount.toString(), "1", "Member count not as expected");
+    assert.equal(fetchedRoleAccountAdmin.memberCount.toString(), "1", "Member count not as expected");
 
   })
+
+  it("Find Utility Account member and role PDAs", async () => {
+
+    roleAccountUtilityAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("role"),
+        accessControllerAccount.toBuffer(),
+        anchor.utils.bytes.utf8.encode(UTILITY_ACCOUNT_ROLE),
+      ],
+      program.programId
+    )[0];
+
+    memberAccountUtilityAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("member"),
+        roleAccountUtilityAccount.toBuffer(),
+        utilityAccount.publicKey.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Utility Account Role Account:", roleAccountAdmin.toString());
+    console.log("Utility Account Member Account:", memberAccountAdmin.toString());
+
+  });
+
+  it("Utility Account Role Is Granted", async () => {
+
+    let grantRoleTx = await program.methods.grantRole(UTILITY_ACCOUNT_ROLE, utilityAccount.publicKey).accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountUtilityAccount,
+      role: roleAccountUtilityAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    console.log("Your transaction signature", grantRoleTx);
+
+    fetchedRoleAccountUtilityAccount = await program.account.role.fetch(roleAccountUtilityAccount);
+    fetchedMemberAccountUtilityAccount = await program.account.member.fetch(memberAccountUtilityAccount);
+
+    assert.equal(fetchedRoleAccountUtilityAccount.role.toString(), UTILITY_ACCOUNT_ROLE, "Role not initialized");
+
+    assert.equal(fetchedMemberAccountUtilityAccount.member.toString(), utilityAccount.publicKey.toString(), "Member not initialized");
+
+    assert.equal(fetchedRoleAccountUtilityAccount.memberCount.toString(), "1", "Member count not as expected");
+  });
 });

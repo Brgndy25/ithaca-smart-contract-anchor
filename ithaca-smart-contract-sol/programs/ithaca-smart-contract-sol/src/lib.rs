@@ -15,7 +15,16 @@ declare_id!("DUT4uZiHydPwJtvPDzDPMtNuxoMbfJi5uuFWcq6UPxbk");
 pub mod ithaca_smart_contract_sol {
     use super::*;
 
-    pub fn init_access_controller(ctx: Context<InitAccessController>) -> Result<()> {
+    pub fn init_access_controller(ctx: Context<InitAccessController>,) -> Result<()> {
         ctx.accounts.initialize(&ctx.bumps)
+    }
+
+    pub fn grant_role(
+        ctx: Context<GrantRole>,
+        role_granted: String,
+        new_member: Pubkey,
+    ) -> Result<()> {
+        ctx.accounts
+            .grant_role(role_granted, new_member, &ctx.bumps)
     }
 }

@@ -1,4 +1,4 @@
-use crate::constants::ADMIN_ROLE;
+use crate::constants::*;
 use crate::state::access_controller_state::{AccessController, Member, Role};
 use anchor_lang::prelude::*;
 
@@ -16,11 +16,11 @@ pub struct InitAccessController<'info> {
         space = AccessController::INIT_SPACE,
     )]
     pub access_controller: Account<'info, AccessController>,
-    // using "role" and access_controller's pk as the seeds, generate a new PDA
+    // using "role", admin role enum and access_controller's pk as the seeds, generate a new PDA
     #[account(
         init,
         payer = admin,
-        seeds = [b"role".as_ref(), access_controller.key().as_ref()],
+        seeds = [b"role".as_ref(), access_controller.key().as_ref(), Roles::Admin.as_str().as_bytes()],
         bump,
         space = AccessController::INIT_SPACE,
     )]
@@ -46,7 +46,7 @@ impl<'info> InitAccessController<'info> {
             bump: bumps.access_controller,
         });
         self.role.set_inner(Role {
-            role: ADMIN_ROLE.to_string(),
+            role: Roles::Admin.as_str().to_string(),
             member_count: 1,
             bump: bumps.role,
         });
