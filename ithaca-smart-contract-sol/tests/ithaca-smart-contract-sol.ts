@@ -126,14 +126,14 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Access Controller Is Initialized", async () => {
-    const initAccessControllertx = await program.methods.initAccessController().accountsPartial({
+    const initAccessControllerTx = await program.methods.initAccessController().accountsPartial({
       accessController: accessControllerAccount,
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     }).signers([admin]).rpc().then(confirmTx).then(log);
 
-    console.log("Your transaction signature", initAccessControllertx);
-
+    console.log("Your transaction signature", initAccessControllerTx);
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     fetchedaccessControllerAccount = await program.account.accessController.fetch(accessControllerAccount);
 
@@ -144,6 +144,8 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedaccessControllerAccount.admin.toString(), admin.publicKey.toString(), "Access Controller not initialized");
 
     assert.equal(fetchedRoleAccount.role.toString(), ADMIN_ROLE, "Role not initialized");
+
+    assert.equal(fetchedRoleAccount.memberCount.toString(), "1", "Account member count should be one, Role possibly not initialized")
 
     assert.equal(fetchedMemberAccount.member.toString(), admin.publicKey.toString(), "Member not initialized");
   })

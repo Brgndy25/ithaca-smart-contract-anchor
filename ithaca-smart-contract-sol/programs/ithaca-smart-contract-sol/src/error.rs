@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum AccessControlError {
-    #[msg("Custom error message")]
-    CustomError,
+    #[msg("Unauthorized: The signer does not match the member associated with this role.")]
+    UnauthorizedSigner,
+    #[msg("Cannot renounce the last member of a role.")]
+    LastMember,
 }
