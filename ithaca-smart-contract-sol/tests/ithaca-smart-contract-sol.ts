@@ -115,6 +115,7 @@ describe("ithaca-smart-contract-sol", () => {
       [
         anchor.utils.bytes.utf8.encode("member"),
         roleAccount.toBuffer(),
+        admin.publicKey.toBuffer(),
       ],
       program.programId
     )[0];
@@ -146,5 +147,8 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedRoleAccount.role.toString(), ADMIN_ROLE, "Role not initialized");
 
     assert.equal(fetchedMemberAccount.member.toString(), admin.publicKey.toString(), "Member not initialized");
+
+    assert.equal(fetchedRoleAccount.memberCount.toString(), "1", "Member count not as expected");
+
   })
 });
