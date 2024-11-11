@@ -14,7 +14,6 @@ import {
   LAMPORTS_PER_SOL,
   SystemProgram,
 } from "@solana/web3.js";
-import { AssertionError } from "chai";
 
 const assert = require("assert");
 
@@ -69,6 +68,9 @@ describe("ithaca-smart-contract-sol", () => {
   // Utility Account Keypair
   const utilityAccount = Keypair.generate();
 
+  // Mock Utility Account Keypair to test renounce role
+  const mockUtilityAccount = Keypair.generate();
+
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
   const UTILITY_ACCOUNT_ROLE: string = "UTILITY_ACCOUNT_ROLE";
@@ -76,11 +78,11 @@ describe("ithaca-smart-contract-sol", () => {
 
   let accessControllerAccount: PublicKey;
 
-  let roleAccountAdminAdmin: PublicKey;
   let roleAccountAdmin: PublicKey;
   let memberAccountAdmin: PublicKey;
 
   let fetchedaccessControllerAccount;
+
   let fetchedRoleAccountAdmin;
   let fetchedmemberAccountAdmin;
 
@@ -89,6 +91,10 @@ describe("ithaca-smart-contract-sol", () => {
 
   let fetchedRoleAccountUtilityAccount;
   let fetchedMemberAccountUtilityAccount;
+
+  let memberAccountMockUtilityAccount: PublicKey;
+
+  let fetchedMemberAccountMockUtilityAccount;
 
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
@@ -185,8 +191,8 @@ describe("ithaca-smart-contract-sol", () => {
       program.programId
     )[0];
 
-    console.log("Utility Account Role Account:", roleAccountAdmin.toString());
-    console.log("Utility Account Member Account:", memberAccountAdmin.toString());
+    console.log("Utility Account Role Account:", roleAccountUtilityAccount.toString());
+    console.log("Utility Account Member Account:", memberAccountUtilityAccount.toString());
 
   });
 
@@ -210,5 +216,71 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedMemberAccountUtilityAccount.member.toString(), utilityAccount.publicKey.toString(), "Member not initialized");
 
     assert.equal(fetchedRoleAccountUtilityAccount.memberCount.toString(), "1", "Member count not as expected");
+  });
+
+  it("Find Mock Utility Account member PDA", async () => {
+
+    memberAccountMockUtilityAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("member"),
+        roleAccountUtilityAccount.toBuffer(),
+        mockUtilityAccount.publicKey.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Mock Utility Account Member Account:", memberAccountMockUtilityAccount.toString());
+
+  });
+
+  it("Mock Utility Account Role Is Granted", async () => {
+
+    let grantRoleTx = await program.methods.grantRole(UTILITY_ACCOUNT_ROLE, mockUtilityAccount.publicKey).accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountMockUtilityAccount,
+      role: roleAccountUtilityAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    console.log("Your transaction signature", grantRoleTx);
+
+    fetchedRoleAccountUtilityAccount = await program.account.role.fetch(roleAccountUtilityAccount);
+    fetchedMemberAccountMockUtilityAccount = await program.account.member.fetch(memberAccountMockUtilityAccount);
+
+    assert.equal(fetchedRoleAccountUtilityAccount.role.toString(), UTILITY_ACCOUNT_ROLE, "Role not initialized");
+
+    assert.equal(fetchedMemberAccountMockUtilityAccount.member.toString(), mockUtilityAccount.publicKey.toString(), "Member not initialized");
+
+    assert.equal(fetchedRoleAccountUtilityAccount.memberCount.toString(), "2", "Member count not as expected");
+  });
+
+  it("Mock Utility Account Role Is Renounced", async () => {
+
+    let renounceRoleTx = await program.methods.renounceRole(UTILITY_ACCOUNT_ROLE, mockUtilityAccount.publicKey).accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountMockUtilityAccount,
+      role: roleAccountUtilityAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    console.log("Your transaction signature", renounceRoleTx);
+
+    let memberAccountInfo;
+    try {
+      memberAccountInfo = await provider.connection.getAccountInfo(memberAccountMockUtilityAccount);
+    } catch (err) {
+      console.error("Error fetching account info:", err);
+    }
+
+    // Check if the account has been closed
+    assert.equal(memberAccountInfo, null, "Member account should be null after being closed");
+
+    // If the account still exists, check if the account data length is zero and it has no lamports
+    if (memberAccountInfo) {
+      assert.equal(memberAccountInfo.data.length, 0, "Member account data length should be zero");
+      assert.equal(memberAccountInfo.lamports, 0, "Member account should have no lamports");
+    }
   });
 });

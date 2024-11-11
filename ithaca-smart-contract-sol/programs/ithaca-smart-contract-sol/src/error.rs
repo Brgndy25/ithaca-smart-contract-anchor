@@ -6,4 +6,6 @@ pub enum AccessControlError {
     UnauthorizedAdmin,
     #[msg("Invalid role: The provided role does not exist")]
     InvalidRole,
+    #[msg("Cannot renounce the last member from the role")]
+    LastMember,
 }

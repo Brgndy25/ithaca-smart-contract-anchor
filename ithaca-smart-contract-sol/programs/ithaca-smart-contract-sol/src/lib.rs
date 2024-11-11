@@ -15,7 +15,7 @@ declare_id!("DUT4uZiHydPwJtvPDzDPMtNuxoMbfJi5uuFWcq6UPxbk");
 pub mod ithaca_smart_contract_sol {
     use super::*;
 
-    pub fn init_access_controller(ctx: Context<InitAccessController>,) -> Result<()> {
+    pub fn init_access_controller(ctx: Context<InitAccessController>) -> Result<()> {
         ctx.accounts.initialize(&ctx.bumps)
     }
 
@@ -26,5 +26,13 @@ pub mod ithaca_smart_contract_sol {
     ) -> Result<()> {
         ctx.accounts
             .grant_role(role_granted, new_member, &ctx.bumps)
+    }
+
+    pub fn renounce_role(
+        ctx: Context<RenounceRole>,
+        role_renounced: String,
+        member_pk: Pubkey,
+    ) -> Result<()> {
+        ctx.accounts.renounce_role(role_renounced, member_pk)
     }
 }
