@@ -1,11 +1,11 @@
-use crate::error::{AccessControlError, TokenValidatorError};
+use crate::error::TokenValidatorError;
 use crate::state::access_controller_state::{AccessController, Member, Role};
 use crate::{Roles, TokenValidator, WhitelistedToken};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
-pub struct AddTokenToWhitelist<'info> {
+pub struct RemoveTokenFromWhitelist<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     #[account(
@@ -30,32 +30,22 @@ pub struct AddTokenToWhitelist<'info> {
     )]
     pub token_validator: Account<'info, TokenValidator>,
     #[account(
-        constraint = new_token_to_whitelist.decimals > 0 @ TokenValidatorError::NonFungibleToken
+        constraint = token_to_remove.decimals > 0 @ TokenValidatorError::NonFungibleToken
     )]
-    pub new_token_to_whitelist: Account<'info, Mint>,
+    pub token_to_remove: Account<'info, Mint>,
+    // closing the whitelisted token account to remove the token from the whitelist
     #[account(
-        init,
-        payer = admin,
-        seeds = [b"whitelisted_token".as_ref(), token_validator.key().as_ref(), new_token_to_whitelist.key().as_ref()],
-        space = WhitelistedToken::INIT_SPACE,
-        bump
+        mut,
+        close = admin,
+        seeds = [b"whitelisted_token".as_ref(), token_validator.key().as_ref(), token_to_remove.key().as_ref()],
+        bump = whitelisted_token.bump
     )]
     pub whitelisted_token: Account<'info, WhitelistedToken>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> AddTokenToWhitelist<'info> {
-    // will init the whitelisted token account which we will use to check if the token
-    // has been whitelisted
-    pub fn add_token_to_whitelist(&mut self, bumps: &AddTokenToWhitelistBumps) -> Result<()> {
-        require!(
-            self.role.role == Roles::Admin.as_str(),
-            AccessControlError::UnauthorizedAdmin
-        );
-        self.whitelisted_token.set_inner(WhitelistedToken {
-            token_mint: self.new_token_to_whitelist.key(),
-            bump: bumps.whitelisted_token,
-        });
+impl<'info> RemoveTokenFromWhitelist<'info> {
+    pub fn remove_token_from_whitelist(&mut self) -> Result<()> {
         Ok(())
     }
 }

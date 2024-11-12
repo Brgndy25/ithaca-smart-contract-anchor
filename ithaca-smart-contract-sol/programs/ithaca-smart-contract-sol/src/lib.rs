@@ -49,6 +49,10 @@ pub mod ithaca_smart_contract_sol {
     }
 
     pub fn add_token_to_whitelist(ctx: Context<AddTokenToWhitelist>) -> Result<()> {
-        ctx.accounts.add_token_to_whitelist()
+        ctx.accounts.add_token_to_whitelist(&ctx.bumps)
+    }
+
+    pub fn remove_token_from_whitelist(ctx: Context<RemoveTokenFromWhitelist>) -> Result<()> {
+        ctx.accounts.remove_token_from_whitelist()
     }
 }

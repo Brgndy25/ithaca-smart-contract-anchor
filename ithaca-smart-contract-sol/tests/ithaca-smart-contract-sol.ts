@@ -90,6 +90,10 @@ describe("ithaca-smart-contract-sol", () => {
   let whitelistedUsdcTokenAccount: PublicKey;
   let fetchedWhitelistedUsdcTokenAccount;
 
+  let mockMint: PublicKey;
+  let whitelistedMockTokenAccount: PublicKey;
+  let fetchedwhitelistedMockTokenAccount;
+
   let roleAccountAdmin: PublicKey;
   let memberAccountAdmin: PublicKey;
 
@@ -278,20 +282,20 @@ describe("ithaca-smart-contract-sol", () => {
 
     console.log("Your transaction signature", renounceRoleTx);
 
-    let memberAccountInfo;
+    let whitelist;
     try {
-      memberAccountInfo = await provider.connection.getAccountInfo(memberAccountMockUtilityAccount);
+      whitelist = await provider.connection.getAccountInfo(memberAccountMockUtilityAccount);
     } catch (err) {
       console.error("Error fetching account info:", err);
     }
 
     // Check if the account has been closed
-    assert.equal(memberAccountInfo, null, "Member account should be null after being closed");
+    assert.equal(whitelist, null, "Member account should be null after being closed");
 
     // If the account still exists, check if the account data length is zero and it has no lamports
-    if (memberAccountInfo) {
-      assert.equal(memberAccountInfo.data.length, 0, "Member account data length should be zero");
-      assert.equal(memberAccountInfo.lamports, 0, "Member account should have no lamports");
+    if (whitelist) {
+      assert.equal(whitelist.data.length, 0, "Member account data length should be zero");
+      assert.equal(whitelist.lamports, 0, "Member account should have no lamports");
     }
   });
 
@@ -398,5 +402,74 @@ describe("ithaca-smart-contract-sol", () => {
     fetchedWhitelistedUsdcTokenAccount = await program.account.whitelistedToken.fetch(whitelistedUsdcTokenAccount);
 
     assert.equal(fetchedWhitelistedUsdcTokenAccount.tokenMint.toString(), usdcMint.toString(), "USDC Token not whitelisted");
+  });
+
+  it("Create a mock token mint", async () => {
+    mockMint = await splToken.createMint(
+      provider.connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      6
+    );
+  });
+
+  it("Find a whitelisted Mock token account PDA", async () => {
+    whitelistedMockTokenAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("whitelisted_token"),
+        tokenValidatorAccount.toBuffer(),
+        mockMint.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Whitelisted Mock Token Account:", whitelistedMockTokenAccount.toString());
+  });
+
+  it("Whitelist Mock Token Account", async () => {
+    let whitelistTokenTx = await program.methods.addTokenToWhitelist().accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountAdmin,
+      role: roleAccountAdmin,
+      tokenValidator: tokenValidatorAccount,
+      whitelistedToken: whitelistedMockTokenAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+      newTokenToWhitelist: mockMint,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    fetchedwhitelistedMockTokenAccount = await program.account.whitelistedToken.fetch(whitelistedMockTokenAccount);
+
+    assert.equal(fetchedwhitelistedMockTokenAccount.tokenMint.toString(), mockMint.toString(), "Mock Token not whitelisted");
+  });
+
+  it("Remove Mock Token Account from Whitelist", async () => {
+    let removeWhitelistTokenTx = await program.methods.removeTokenFromWhitelist().accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountAdmin,
+      role: roleAccountAdmin,
+      tokenValidator: tokenValidatorAccount,
+      whitelistedToken: whitelistedMockTokenAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+      tokenToRemove: mockMint,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    let whitelistedMockTokenAccountInfo;
+    try {
+      whitelistedMockTokenAccountInfo = await provider.connection.getAccountInfo(whitelistedMockTokenAccount);
+    } catch (err) {
+      console.error("Error fetching account info:", err);
+    }
+
+    // Check if the account has been closed
+    assert.equal(whitelistedMockTokenAccountInfo, null, "Member account should be null after being closed");
+
+    // If the account still exists, check if the account data length is zero and it has no lamports
+    if (whitelistedMockTokenAccountInfo) {
+      assert.equal(whitelistedMockTokenAccountInfo.data.length, 0, "Member account data length should be zero");
+      assert.equal(whitelistedMockTokenAccountInfo.lamports, 0, "Member account should have no lamports");
+    }
   });
 });
