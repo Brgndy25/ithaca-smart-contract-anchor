@@ -47,4 +47,8 @@ pub mod ithaca_smart_contract_sol {
     pub fn init_token_validator(ctx: Context<InitTokenValidator>) -> Result<()> {
         ctx.accounts.init_token_validator(&ctx.bumps)
     }
+
+    pub fn add_token_to_whitelist(ctx: Context<AddTokenToWhitelist>) -> Result<()> {
+        ctx.accounts.add_token_to_whitelist()
+    }
 }

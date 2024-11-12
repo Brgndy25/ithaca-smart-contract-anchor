@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import * as splToken from "@solana/spl-token";
 import { Program } from "@coral-xyz/anchor";
 import { IthacaSmartContractSol } from "../target/types/ithaca_smart_contract_sol";
 import {
@@ -62,6 +63,9 @@ describe("ithaca-smart-contract-sol", () => {
 
   const program = anchor.workspace.IthacaSmartContractSol as Program<IthacaSmartContractSol>;
 
+  //Payer Keypair that is going to pay for token creation
+  const payer = Keypair.generate();
+
   //Admin Keypair
   const admin = Keypair.generate();
 
@@ -77,14 +81,17 @@ describe("ithaca-smart-contract-sol", () => {
   const LIQUIDATOR_ROLE: string = "LIQUIDATOR_ROLE";
 
   let accessControllerAccount: PublicKey;
+  let fetchedaccessControllerAccount;
 
   let tokenValidatorAccount: PublicKey;
+  let fetchedTokenValidatorAccount;
 
+  let usdcMint: PublicKey;
+  let whitelistedUsdcTokenAccount: PublicKey;
+  let fetchedWhitelistedUsdcTokenAccount;
 
   let roleAccountAdmin: PublicKey;
   let memberAccountAdmin: PublicKey;
-
-  let fetchedaccessControllerAccount;
 
   let fetchedRoleAccountAdmin;
   let fetchedmemberAccountAdmin;
@@ -96,13 +103,13 @@ describe("ithaca-smart-contract-sol", () => {
   let fetchedMemberAccountUtilityAccount;
 
   let memberAccountMockUtilityAccount: PublicKey;
-
   let fetchedMemberAccountMockUtilityAccount;
+
 
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
     await Promise.all(
-      [admin, utilityAccount].map(async (account) => {
+      [admin, utilityAccount, payer].map(async (account) => {
         await provider.connection
           .requestAirdrop(account.publicKey, 100 * LAMPORTS_PER_SOL)
           .then(confirmTx);
@@ -111,6 +118,7 @@ describe("ithaca-smart-contract-sol", () => {
 
     assert.equal(await getAccountBalance(provider.connection, admin.publicKey), 100, "Airdrop failed");
     assert.equal(await getAccountBalance(provider.connection, utilityAccount.publicKey), 100, "Airdrop failed");
+    assert.equal(await getAccountBalance(provider.connection, payer.publicKey), 100, "Airdrop failed");
   });
 
   it("Find Access Controller and Admin member and role PDAs", async () => {
@@ -335,7 +343,6 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Initialize Token Validator Account", async () => {
-
     let initTokenValidatorTx = await program.methods.initTokenValidator().accountsPartial({
       accessController: accessControllerAccount,
       role: roleAccountAdmin,
@@ -345,6 +352,51 @@ describe("ithaca-smart-contract-sol", () => {
       tokenValidator: tokenValidatorAccount,
     }).signers([admin]).rpc().then(confirmTx).then(log);
 
+    fetchedTokenValidatorAccount = await program.account.tokenValidator.fetch(tokenValidatorAccount);
+
+    assert.equal(fetchedTokenValidatorAccount.accessController.toString(), accessControllerAccount.toString(), "Token Validator Account not initialized");
+
   });
 
+  it("Create a token mint with params equal to USDC on SOL", async () => {
+    usdcMint = await splToken.createMint(
+      provider.connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      6
+    );
+
+    console.log("USDC Mint:", usdcMint.toString());
+  });
+
+  it("Find a whitelisted USDC token account PDA", async () => {
+    whitelistedUsdcTokenAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("whitelisted_token"),
+        tokenValidatorAccount.toBuffer(),
+        usdcMint.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Whitelisted USDC Token Account:", whitelistedUsdcTokenAccount.toString());
+  });
+
+  it("Whitelist USDC Token Account", async () => {
+    let whitelistTokenTx = await program.methods.addTokenToWhitelist().accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountAdmin,
+      role: roleAccountAdmin,
+      tokenValidator: tokenValidatorAccount,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      admin: admin.publicKey,
+      systemProgram: SystemProgram.programId,
+      newTokenToWhitelist: usdcMint,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    fetchedWhitelistedUsdcTokenAccount = await program.account.whitelistedToken.fetch(whitelistedUsdcTokenAccount);
+
+    assert.equal(fetchedWhitelistedUsdcTokenAccount.tokenMint.toString(), usdcMint.toString(), "USDC Token not whitelisted");
+  });
 });
