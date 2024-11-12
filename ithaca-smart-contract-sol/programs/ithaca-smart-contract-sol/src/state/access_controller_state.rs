@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct AccessController {
     pub admin: Pubkey,
-    //pub roles: Vec<Role>,
     pub bump: u8,
 }
 

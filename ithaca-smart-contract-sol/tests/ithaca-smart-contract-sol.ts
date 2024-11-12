@@ -78,6 +78,9 @@ describe("ithaca-smart-contract-sol", () => {
 
   let accessControllerAccount: PublicKey;
 
+  let tokenValidatorAccount: PublicKey;
+
+
   let roleAccountAdmin: PublicKey;
   let memberAccountAdmin: PublicKey;
 
@@ -316,5 +319,32 @@ describe("ithaca-smart-contract-sol", () => {
 
   });
 
+
+  it("Find Token Validator Account PDA", async () => {
+
+    tokenValidatorAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("token_validator"),
+        accessControllerAccount.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Token Validator Account:", memberAccountMockUtilityAccount.toString());
+
+  });
+
+  it("Initialize Token Validator Account", async () => {
+
+    let initTokenValidatorTx = await program.methods.initTokenValidator().accountsPartial({
+      accessController: accessControllerAccount,
+      role: roleAccountAdmin,
+      member: memberAccountAdmin,
+      systemProgram: SystemProgram.programId,
+      admin: admin.publicKey,
+      tokenValidator: tokenValidatorAccount,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+  });
 
 });

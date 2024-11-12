@@ -11,3 +11,9 @@ pub enum AccessControlError {
     #[msg("This member doesn't not have any role assigned")]
     NoRole,
 }
+
+#[error_code]
+pub enum TokenValidatorError {
+    #[msg("The provided token is not a fungible token")]
+    NonFungibleToken,
+}

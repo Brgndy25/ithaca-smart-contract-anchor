@@ -13,13 +13,11 @@ pub struct CheckRole<'info> {
     )]
     pub access_controller: Account<'info, AccessController>,
     #[account(
-        mut,
         seeds = [b"role".as_ref(), access_controller.key().as_ref(), _role_checked.as_str().as_bytes()],
         bump = role.bump,
     )]
     pub role: Account<'info, Role>,
     #[account(
-        mut,
         seeds = [b"member".as_ref(), role.key().as_ref(), _member_pk.as_ref()],
         bump = member.bump,
     )]

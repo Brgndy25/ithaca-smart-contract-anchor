@@ -43,4 +43,8 @@ pub mod ithaca_smart_contract_sol {
     ) -> Result<()> {
         ctx.accounts.check_role(role_checked, member_pk)
     }
+
+    pub fn init_token_validator(ctx: Context<InitTokenValidator>) -> Result<()> {
+        ctx.accounts.init_token_validator(&ctx.bumps)
+    }
 }
