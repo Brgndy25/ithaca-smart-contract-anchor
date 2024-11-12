@@ -9,3 +9,7 @@ pub use grant_role::*;
 pub mod renounce_role;
 
 pub use renounce_role::*;
+
+pub mod check_role;
+
+pub use check_role::*;

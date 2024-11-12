@@ -8,4 +8,6 @@ pub enum AccessControlError {
     InvalidRole,
     #[msg("Cannot renounce the last member from the role")]
     LastMember,
+    #[msg("This member doesn't not have any role assigned")]
+    NoRole,
 }

@@ -35,4 +35,12 @@ pub mod ithaca_smart_contract_sol {
     ) -> Result<()> {
         ctx.accounts.renounce_role(role_renounced, member_pk)
     }
+
+    pub fn check_role(
+        ctx: Context<CheckRole>,
+        role_checked: String,
+        member_pk: Pubkey,
+    ) -> Result<()> {
+        ctx.accounts.check_role(role_checked, member_pk)
+    }
 }

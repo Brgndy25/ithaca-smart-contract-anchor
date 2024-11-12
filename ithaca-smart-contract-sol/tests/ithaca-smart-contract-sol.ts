@@ -283,4 +283,38 @@ describe("ithaca-smart-contract-sol", () => {
       assert.equal(memberAccountInfo.lamports, 0, "Member account should have no lamports");
     }
   });
+
+  it("Checks the role of the Utility Account Member", async () => {
+    let checkRoleTx = await program.methods.checkRole(UTILITY_ACCOUNT_ROLE, utilityAccount.publicKey).accountsPartial({
+      accessController: accessControllerAccount,
+      member: memberAccountUtilityAccount,
+      role: roleAccountUtilityAccount,
+      caller: utilityAccount.publicKey,
+      systemProgram: SystemProgram.programId,
+    }).signers([utilityAccount]).rpc().then(confirmTx).then(log);
+
+  });
+
+  it("Check Role should failed due to mock utility account not having a role initialized", async () => {
+
+    try {
+      let checkRoleTx = await program.methods.checkRole(UTILITY_ACCOUNT_ROLE, mockUtilityAccount.publicKey).accountsPartial({
+        accessController: accessControllerAccount,
+        member: memberAccountMockUtilityAccount,
+        role: roleAccountUtilityAccount,
+        caller: mockUtilityAccount.publicKey,
+        systemProgram: SystemProgram.programId,
+      }).signers([mockUtilityAccount]).rpc().then(confirmTx).then(log);
+
+      // If the transaction succeeds, the test should fail
+      assert.fail("The transaction should have failed due to the Mock Utility Account not existing.");
+    } catch (err) {
+      // Check that the error is the expected one
+      console.log("Expected error:", err);
+      assert.ok(err, "The transaction failed as expected.");
+    }
+
+  });
+
+
 });
