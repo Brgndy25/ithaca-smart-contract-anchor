@@ -86,6 +86,13 @@ describe("ithaca-smart-contract-sol", () => {
   let tokenValidatorAccount: PublicKey;
   let fetchedTokenValidatorAccount;
 
+  let fundlockAccount: PublicKey;
+  let fetchedFundlockAccount;
+
+  let trade_lock = new anchor.BN(10 * 60 * 1000); // 10 minutes
+  let release_lock = new anchor.BN(20 * 60 * 1000); // 10 minutes
+
+
   let usdcMint: PublicKey;
   let whitelistedUsdcTokenAccount: PublicKey;
   let fetchedWhitelistedUsdcTokenAccount;
@@ -337,7 +344,7 @@ describe("ithaca-smart-contract-sol", () => {
     tokenValidatorAccount = PublicKey.findProgramAddressSync(
       [
         anchor.utils.bytes.utf8.encode("token_validator"),
-        accessControllerAccount.toBuffer(),
+        roleAccountAdmin.toBuffer(),
       ],
       program.programId
     )[0];
@@ -471,5 +478,40 @@ describe("ithaca-smart-contract-sol", () => {
       assert.equal(whitelistedMockTokenAccountInfo.data.length, 0, "Member account data length should be zero");
       assert.equal(whitelistedMockTokenAccountInfo.lamports, 0, "Member account should have no lamports");
     }
+  });
+
+  it("Find Fundlock Account PDA", async () => {
+
+    fundlockAccount = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("fundlock"),
+        accessControllerAccount.toBuffer(),
+        tokenValidatorAccount.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Fundlock Account:", fundlockAccount.toString());
+  });
+
+  it("Initialize Fundlock Account", async () => {
+    let initFundlockTx = await program.methods.initFundlock(trade_lock, release_lock).accountsPartial({
+      accessController: accessControllerAccount,
+      tokenValidator: tokenValidatorAccount,
+      fundlock: fundlockAccount,
+      role: roleAccountAdmin,
+      systemProgram: SystemProgram.programId,
+      caller: admin.publicKey,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    fetchedFundlockAccount = await program.account.fundlock.fetch(fundlockAccount);
+
+    assert.equal(fetchedFundlockAccount.accessController.toString(), accessControllerAccount.toString(), "Fundlock Account not initialized");
+
+    assert.equal(fetchedFundlockAccount.tokenValidator.toString(), tokenValidatorAccount.toString(), "Fundlock Account not initialized");
+
+    assert.equal(fetchedFundlockAccount.tradeLock.toString(), trade_lock.toString(), "Trade Lock not initialized");
+
+    assert.equal(fetchedFundlockAccount.releaseLock.toString(), release_lock.toString(), "Release Lock not initialized");
   });
 });

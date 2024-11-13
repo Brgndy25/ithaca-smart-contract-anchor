@@ -55,4 +55,13 @@ pub mod ithaca_smart_contract_sol {
     pub fn remove_token_from_whitelist(ctx: Context<RemoveTokenFromWhitelist>) -> Result<()> {
         ctx.accounts.remove_token_from_whitelist()
     }
+
+    pub fn init_fundlock(
+        ctx: Context<InitFundlock>,
+        trade_lock: i64,
+        release_lock: i64,
+    ) -> Result<()> {
+        ctx.accounts
+            .init_fundlock(trade_lock, release_lock, &ctx.bumps)
+    }
 }

@@ -25,7 +25,7 @@ pub struct RemoveTokenFromWhitelist<'info> {
     )]
     pub member: Account<'info, Member>,
     #[account(
-        seeds = [b"token_validator".as_ref(), access_controller.key().as_ref()],
+        seeds = [b"token_validator".as_ref(), role.key().as_ref()],
         bump = token_validator.bump
     )]
     pub token_validator: Account<'info, TokenValidator>,

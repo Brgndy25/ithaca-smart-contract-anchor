@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+pub const ALLOWED_WITHDRAWAL_LIMIT: usize = 5;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Roles {
     Admin,
