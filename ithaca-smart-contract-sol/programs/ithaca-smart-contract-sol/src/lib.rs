@@ -64,4 +64,8 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts
             .init_fundlock(trade_lock, release_lock, &ctx.bumps)
     }
+
+    pub fn deposit_fundlock(ctx: Context<DepositFundlock>, amount: u64) -> Result<()> {
+        ctx.accounts.deposit_fundlock(amount)
+    }
 }

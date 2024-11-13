@@ -34,7 +34,6 @@ pub struct InitFundlock<'info> {
 }
 
 impl<'info> InitFundlock<'info> {
-    //will init the token validator account which we will use to whitelist tokens
     pub fn init_fundlock(
         &mut self,
         trade_lock: i64,

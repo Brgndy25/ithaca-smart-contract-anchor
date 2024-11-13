@@ -16,4 +16,12 @@ pub enum AccessControlError {
 pub enum TokenValidatorError {
     #[msg("The provided token is not a fungible token")]
     NonFungibleToken,
+    #[msg("The provided token is not whitelisted")]
+    TokenNotWhitelisted,
+}
+
+#[error_code]
+pub enum FundlockError {
+    #[msg("The deposit amount cannot be zero")]
+    DepositAmountZero,
 }

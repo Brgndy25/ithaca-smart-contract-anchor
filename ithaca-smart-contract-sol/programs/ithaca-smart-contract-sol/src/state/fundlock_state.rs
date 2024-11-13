@@ -18,14 +18,6 @@ pub struct WithdrawalState {
     pub bump: u8,
 }
 
-//will be dervied using tokens mint to differentiate client balance between different tokens
-#[account]
-pub struct Balance {
-    pub client: Pubkey,
-    pub balance: u64,
-    pub bump: u8,
-}
-
 #[account]
 pub struct Withdrawals {
     pub withdrawals: Vec<WithdrawalState>,
@@ -45,13 +37,6 @@ impl Space for WithdrawalState {
     const INIT_SPACE: usize = 8 + // account discriminator
     8 + // amount
     8 + // timestamp
-    1; // bump
-}
-
-impl Space for Balance {
-    const INIT_SPACE: usize = 8 + // account discriminator
-    32 + // client pubkey
-    8 + // balance
     1; // bump
 }
 

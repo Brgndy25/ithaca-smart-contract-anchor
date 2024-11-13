@@ -29,3 +29,7 @@ pub use remove_token_from_whitelist::*;
 pub mod init_fundlock;
 
 pub use init_fundlock::*;
+
+pub mod deposit_fundlock;
+
+pub use deposit_fundlock::*;

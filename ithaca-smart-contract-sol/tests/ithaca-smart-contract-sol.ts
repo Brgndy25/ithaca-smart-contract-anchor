@@ -75,6 +75,14 @@ describe("ithaca-smart-contract-sol", () => {
   // Mock Utility Account Keypair to test renounce role
   const mockUtilityAccount = Keypair.generate();
 
+  // Client One Keypair
+  const clientOne = Keypair.generate();
+  let clientOneUsdcAta: Account;
+  const amountToDepositClientOne = new anchor.BN(10000000);
+  let clientOneUsdcBalance: PublicKey;
+  let clientOneMockAta: Account;
+  let clientOneMockBalance: PublicKey;
+
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
   const UTILITY_ACCOUNT_ROLE: string = "UTILITY_ACCOUNT_ROLE";
@@ -91,7 +99,6 @@ describe("ithaca-smart-contract-sol", () => {
 
   let trade_lock = new anchor.BN(10 * 60 * 1000); // 10 minutes
   let release_lock = new anchor.BN(20 * 60 * 1000); // 10 minutes
-
 
   let usdcMint: PublicKey;
   let whitelistedUsdcTokenAccount: PublicKey;
@@ -120,7 +127,7 @@ describe("ithaca-smart-contract-sol", () => {
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
     await Promise.all(
-      [admin, utilityAccount, payer].map(async (account) => {
+      [admin, utilityAccount, payer, clientOne].map(async (account) => {
         await provider.connection
           .requestAirdrop(account.publicKey, 100 * LAMPORTS_PER_SOL)
           .then(confirmTx);
@@ -130,6 +137,7 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(await getAccountBalance(provider.connection, admin.publicKey), 100, "Airdrop failed");
     assert.equal(await getAccountBalance(provider.connection, utilityAccount.publicKey), 100, "Airdrop failed");
     assert.equal(await getAccountBalance(provider.connection, payer.publicKey), 100, "Airdrop failed");
+    assert.equal(await getAccountBalance(provider.connection, clientOne.publicKey), 100, "Airdrop failed");
   });
 
   it("Find Access Controller and Admin member and role PDAs", async () => {
@@ -513,5 +521,136 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedFundlockAccount.tradeLock.toString(), trade_lock.toString(), "Trade Lock not initialized");
 
     assert.equal(fetchedFundlockAccount.releaseLock.toString(), release_lock.toString(), "Release Lock not initialized");
+  });
+
+  it("Create a USDC ATA for the client One", async () => {
+    clientOneUsdcAta = await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      clientOne,
+      usdcMint,
+      clientOne.publicKey
+    );
+
+    console.log("Client one's USDC Ata:", clientOneUsdcAta.toString());
+  });
+
+  it("Mint USDC to the client One", async () => {
+    let mintToClientOneTx = await splToken.mintTo(
+      provider.connection,
+      payer,
+      usdcMint,
+      clientOneUsdcAta.address,
+      payer,
+      1000000000
+    );
+
+    assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), "1000000000", "USDC not minted to client one");
+
+    console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
+  });
+
+  it("Find a balance PDA for client one's USDC", async () => {
+    clientOneUsdcBalance = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("client_balance"),
+        fundlockAccount.toBuffer(),
+        clientOneUsdcAta.address.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One's USDC Balance:", clientOneUsdcBalance.toString());
+  });
+
+  it("Deposit USDC from client one to the Fundlock Account", async () => {
+    let depositUsdcTx = await program.methods.depositFundlock(amountToDepositClientOne).accountsPartial({
+      accessController: accessControllerAccount,
+      tokenValidator: tokenValidatorAccount,
+      role: roleAccountAdmin,
+      fundlock: fundlockAccount,
+      client: clientOne.publicKey,
+      clientAta: clientOneUsdcAta.address,
+      token: usdcMint,
+      clientBalance: clientOneUsdcBalance,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+    }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+    assert.equal((await getTokenAccountBalance(provider.connection, clientOneUsdcBalance)).toString(), amountToDepositClientOne.toString(), "USDC not deposited to fundlock");
+  });
+
+  it("Create a Mock Token ATA for the client One", async () => {
+    clientOneMockAta = await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      clientOne,
+      mockMint,
+      clientOne.publicKey
+    );
+
+    console.log("Client one's USDC Ata:", clientOneMockAta.toString());
+  });
+
+  it("Mint USDC to the client One", async () => {
+    let mintToClientOneTx = await splToken.mintTo(
+      provider.connection,
+      payer,
+      mockMint,
+      clientOneMockAta.address,
+      payer,
+      1000000000
+    );
+
+    assert.equal(await getTokenAccountBalance(provider.connection, clientOneMockAta.address), "1000000000", "USDC not minted to client one");
+
+    console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
+  });
+
+  it("Find a balance PDA for client one's Mock Token", async () => {
+    clientOneMockBalance = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("client_balance"),
+        fundlockAccount.toBuffer(),
+        clientOneMockAta.address.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One's USDC Balance:", clientOneMockBalance.toString());
+  });
+
+
+  it("Deposit Mock Token from client one to the Fundlock Account (should fail)", async () => {
+    try {
+      let depositMockTx = await program.methods.depositFundlock(amountToDepositClientOne).accountsPartial({
+        accessController: accessControllerAccount,
+        tokenValidator: tokenValidatorAccount,
+        role: roleAccountAdmin,
+        fundlock: fundlockAccount,
+        client: clientOne.publicKey,
+        clientAta: clientOneMockAta.address,
+        token: mockMint,
+        clientBalance: clientOneMockBalance,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        whitelistedToken: whitelistedMockTokenAccount,
+      }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+      // If the transaction succeeds, the test should fail
+      assert.fail("The transaction should have failed.");
+    } catch (err) {
+      // Check that the error is the expected one
+      console.log("Expected error:", err);
+      assert.ok(err, "The transaction failed as expected.");
+    }
+
+    // Check if the clientOneMockBalance account does not exist after the execution
+    try {
+      const clientOneMockBalanceInfo = await provider.connection.getAccountInfo(clientOneMockBalance);
+      assert.fail("The account should not exist.");
+    } catch (err) {
+      console.log("Expected error when fetching account info:", err);
+      assert.ok(err, "The account does not exist as expected.");
+    }
   });
 });
