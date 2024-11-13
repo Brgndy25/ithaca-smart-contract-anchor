@@ -12,6 +12,12 @@ pub struct Fundlock {
 }
 
 #[account]
+pub struct ClientBalanceState {
+    pub amount: u64,
+    pub bump: u8,
+}
+
+#[account]
 pub struct WithdrawalState {
     pub amount: u64,
     pub timestamp: i64,
@@ -19,7 +25,7 @@ pub struct WithdrawalState {
 }
 
 #[account]
-pub struct Withdrawals {
+pub struct WithdrawalsQueue {
     pub withdrawals: Vec<WithdrawalState>,
     pub bump: u8,
 }
@@ -33,6 +39,12 @@ impl Space for Fundlock {
     1; // bump
 }
 
+impl Space for ClientBalanceState {
+    const INIT_SPACE: usize = 8 + // account discriminator
+    8 + // amount
+    1; // bump
+}
+
 impl Space for WithdrawalState {
     const INIT_SPACE: usize = 8 + // account discriminator
     8 + // amount
@@ -40,7 +52,7 @@ impl Space for WithdrawalState {
     1; // bump
 }
 
-impl Space for Withdrawals {
+impl Space for WithdrawalsQueue {
     const INIT_SPACE: usize = 8 + // account discriminator
     4 + (ALLOWED_WITHDRAWAL_LIMIT * 24) + // withdrawals limited to 5 per client
     8; // bump

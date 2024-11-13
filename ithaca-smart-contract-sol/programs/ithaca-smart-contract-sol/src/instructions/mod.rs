@@ -33,3 +33,7 @@ pub use init_fundlock::*;
 pub mod deposit_fundlock;
 
 pub use deposit_fundlock::*;
+
+pub mod withdraw_fundlock;
+
+pub use withdraw_fundlock::*;

@@ -22,6 +22,8 @@ pub enum TokenValidatorError {
 
 #[error_code]
 pub enum FundlockError {
-    #[msg("The deposit amount cannot be zero")]
-    DepositAmountZero,
+    #[msg("The amount cannot be zero")]
+    AmountZero,
+    #[msg("Insufficient funds for the operation")]
+    InsufficientFunds,
 }

@@ -78,10 +78,12 @@ describe("ithaca-smart-contract-sol", () => {
   // Client One Keypair
   const clientOne = Keypair.generate();
   let clientOneUsdcAta: Account;
-  const amountToDepositClientOne = new anchor.BN(10000000);
   let clientOneUsdcBalance: PublicKey;
+  let clientOneUsdcBalanceState: PublicKey;
   let clientOneMockAta: Account;
   let clientOneMockBalance: PublicKey;
+  let clientOneMockBalanceState: PublicKey;
+  const amountToDepositClientOne = new anchor.BN(10000000);
 
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
@@ -549,17 +551,31 @@ describe("ithaca-smart-contract-sol", () => {
     console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
   });
 
-  it("Find a balance PDA for client one's USDC", async () => {
-    clientOneUsdcBalance = PublicKey.findProgramAddressSync(
+  it("Find a balance PDA for client one's USDC and state PDA", async () => {
+
+    clientOneUsdcBalanceState = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance"),
+        anchor.utils.bytes.utf8.encode("client_balance_state"),
         fundlockAccount.toBuffer(),
         clientOneUsdcAta.address.toBuffer(),
       ],
       program.programId
     )[0];
 
+    console.log("Client One's USDC Balance State:", clientOneUsdcBalanceState.toString());
+
+    clientOneUsdcBalance = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("client_balance"),
+        fundlockAccount.toBuffer(),
+        clientOneUsdcBalanceState.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
     console.log("Client One's USDC Balance:", clientOneUsdcBalance.toString());
+
+
   });
 
   it("Deposit USDC from client one to the Fundlock Account", async () => {
@@ -572,6 +588,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientAta: clientOneUsdcAta.address,
       token: usdcMint,
       clientBalance: clientOneUsdcBalance,
+      clientBalanceState: clientOneUsdcBalanceState,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       whitelistedToken: whitelistedUsdcTokenAccount,
@@ -591,7 +608,7 @@ describe("ithaca-smart-contract-sol", () => {
     console.log("Client one's USDC Ata:", clientOneMockAta.toString());
   });
 
-  it("Mint USDC to the client One", async () => {
+  it("Mint Mock Token to the client One", async () => {
     let mintToClientOneTx = await splToken.mintTo(
       provider.connection,
       payer,
@@ -606,17 +623,28 @@ describe("ithaca-smart-contract-sol", () => {
     console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
   });
 
-  it("Find a balance PDA for client one's Mock Token", async () => {
-    clientOneMockBalance = PublicKey.findProgramAddressSync(
+  it("Find a balance PDA for client one's Mock Token and state PDA", async () => {
+    clientOneMockBalanceState = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance"),
+        anchor.utils.bytes.utf8.encode("client_balance_state"),
         fundlockAccount.toBuffer(),
         clientOneMockAta.address.toBuffer(),
       ],
       program.programId
     )[0];
 
-    console.log("Client One's USDC Balance:", clientOneMockBalance.toString());
+    console.log("Client One's Mock Balance State:", clientOneMockBalanceState.toString());
+    clientOneMockBalance = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("client_balance"),
+        fundlockAccount.toBuffer(),
+        clientOneMockBalanceState.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One's Mock Balance:", clientOneMockBalance.toString());
+
   });
 
 
@@ -631,6 +659,7 @@ describe("ithaca-smart-contract-sol", () => {
         clientAta: clientOneMockAta.address,
         token: mockMint,
         clientBalance: clientOneMockBalance,
+        clientBalanceState: clientOneMockBalanceState,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         whitelistedToken: whitelistedMockTokenAccount,
@@ -653,4 +682,21 @@ describe("ithaca-smart-contract-sol", () => {
       assert.ok(err, "The account does not exist as expected.");
     }
   });
+
+  /*it("SEED TEST WITHDRAW", async () => {
+    let depositUsdcTx = await program.methods.withdrawFundlock().accountsPartial({
+      accessController: accessControllerAccount,
+      tokenValidator: tokenValidatorAccount,
+      role: roleAccountAdmin,
+      fundlock: fundlockAccount,
+      client: clientOne.publicKey,
+      clientAta: clientOneUsdcAta.address,
+      token: usdcMint,
+      clientBalance: clientOneUsdcBalance,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+    }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+  });*/
 });
