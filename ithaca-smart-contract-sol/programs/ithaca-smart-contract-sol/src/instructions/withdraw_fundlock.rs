@@ -1,9 +1,7 @@
 use crate::error::{FundlockError, TokenValidatorError};
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{
-    ClientBalanceState, Roles, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals,
-};
+use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -41,17 +39,17 @@ pub struct WithdrawFundlock<'info> {
     )]
     pub whitelisted_token: Box<Account<'info, WhitelistedToken>>,
     #[account(
-        seeds = [b"client_balance".as_ref(), fundlock.key().as_ref(), client_ata.key().as_ref()],
+        seeds = [b"fundlock_token_vault".as_ref(), fundlock.key().as_ref(), token.key().as_ref()],
         token::mint = token,
         token::authority = fundlock,
         bump,
     )]
-    pub client_balance: Box<Account<'info, TokenAccount>>,
+    pub fundlock_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
-        seeds = [b"client_balance_state".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
-        bump = client_balance_state.bump
+        seeds = [b"client_balance".as_ref(), fundlock_token_vault.key().as_ref(), client_ata.key().as_ref()],
+        bump = client_balance.bump
     )]
-    pub client_balance_state: Box<Account<'info, ClientBalanceState>>,
+    pub client_balance: Box<Account<'info, ClientBalance>>,
     #[account(
         mut,
         constraint = client_ata.mint == token.key() &&
@@ -61,7 +59,7 @@ pub struct WithdrawFundlock<'info> {
     #[account(
         init_if_needed,
         payer = client,
-        seeds = [b"withdrawals".as_ref(), fundlock.key().as_ref(), client_balance_state.key().as_ref()],
+        seeds = [b"withdrawals".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
         space = Withdrawals::INIT_SPACE,
         bump,
     )]
@@ -74,7 +72,7 @@ impl<'info> WithdrawFundlock<'info> {
     pub fn withdraw_fundlock(&mut self, amount: u64, bumps: &WithdrawFundlockBumps) -> Result<()> {
         require!(amount > 0, FundlockError::AmountZero);
         require!(
-            self.client_balance_state.amount > amount,
+            self.client_balance.amount >= amount,
             FundlockError::InsufficientFunds
         );
         require!(
@@ -89,7 +87,7 @@ impl<'info> WithdrawFundlock<'info> {
 
         self.withdrawals.withdrawal_queue.push(withdrawal);
 
-        self.client_balance_state.amount -= amount;
+        self.client_balance.amount -= amount;
         self.withdrawals.active_withdrawals_amount += amount;
         self.withdrawals.bump = bumps.withdrawals;
 

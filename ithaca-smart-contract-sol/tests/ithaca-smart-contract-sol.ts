@@ -85,7 +85,7 @@ describe("ithaca-smart-contract-sol", () => {
   let clientOneMockBalanceState: PublicKey;
   let clientOneUsdcWithdrawals: PublicKey;
   let fetchedClientOneUsdcWithdrawals;
-  let fetchedClientOneUsdcBalanceState;
+  let fetchedClientOneUsdcBalance;
   const amountToDepositClientOne = new anchor.BN(10000000);
   const amountToWithdrawClientOne = new anchor.BN((amountToDepositClientOne.toNumber() / 5));
 
@@ -101,6 +101,7 @@ describe("ithaca-smart-contract-sol", () => {
   let fetchedTokenValidatorAccount;
 
   let fundlockAccount: PublicKey;
+  let fundlockTokenVault: PublicKey;
   let fetchedFundlockAccount;
 
   let trade_lock = new anchor.BN(10 * 60 * 1000); // 10 minutes
@@ -555,31 +556,32 @@ describe("ithaca-smart-contract-sol", () => {
     console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
   });
 
-  it("Find a balance PDA for client one's USDC and state PDA", async () => {
+  it("Find the address for fundlock token vault", async () => {
+
+    fundlockTokenVault = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("fundlock_token_vault"),
+        fundlockAccount.toBuffer(),
+        usdcMint.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Fundlock Token Vault:", fundlockTokenVault.toString());
+  });
+
+  it("Find a balance PDA for client one's USDC balance", async () => {
 
     clientOneUsdcBalance = PublicKey.findProgramAddressSync(
       [
         anchor.utils.bytes.utf8.encode("client_balance"),
-        fundlockAccount.toBuffer(),
+        fundlockTokenVault.toBuffer(),
         clientOneUsdcAta.address.toBuffer(),
       ],
       program.programId
     )[0];
 
     console.log("Client One's USDC Balance:", clientOneUsdcBalance.toString());
-
-    clientOneUsdcBalanceState = PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode("client_balance_state"),
-        fundlockAccount.toBuffer(),
-        clientOneUsdcBalance.toBuffer(),
-      ],
-      program.programId
-    )[0];
-
-    console.log("Client One's USDC Balance State:", clientOneUsdcBalanceState.toString());
-
-
 
   });
 
@@ -593,17 +595,17 @@ describe("ithaca-smart-contract-sol", () => {
       clientAta: clientOneUsdcAta.address,
       token: usdcMint,
       clientBalance: clientOneUsdcBalance,
-      clientBalanceState: clientOneUsdcBalanceState,
+      fundlockTokenVault: fundlockTokenVault,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       whitelistedToken: whitelistedUsdcTokenAccount,
     }).signers([clientOne]).rpc().then(confirmTx).then(log);
 
-    fetchedClientOneUsdcBalanceState = await program.account.clientBalanceState.fetch(clientOneUsdcBalanceState);
+    fetchedClientOneUsdcBalance = await program.account.clientBalance.fetch(clientOneUsdcBalance);
 
-    assert.equal((await getTokenAccountBalance(provider.connection, clientOneUsdcBalance)).toString(), amountToDepositClientOne.toString(), "USDC not deposited to fundlock");
+    assert.equal((await getTokenAccountBalance(provider.connection, fundlockTokenVault)).toString(), amountToDepositClientOne.toString(), "USDC not deposited to fundlock");
 
-    assert.equal(fetchedClientOneUsdcBalanceState.amount.toString(), amountToDepositClientOne.toString(), "Client One's USDC Balance State not updated");
+    assert.equal(fetchedClientOneUsdcBalance.amount.toString(), amountToDepositClientOne.toString(), "Client One's USDC Balance State not updated");
   });
 
   it("Create a Mock Token ATA for the client One", async () => {
@@ -670,7 +672,7 @@ describe("ithaca-smart-contract-sol", () => {
         clientAta: clientOneMockAta.address,
         token: mockMint,
         clientBalance: clientOneMockBalance,
-        clientBalanceState: clientOneMockBalanceState,
+        fundlockTokenVault: fundlockTokenVault,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         whitelistedToken: whitelistedMockTokenAccount,
@@ -699,7 +701,7 @@ describe("ithaca-smart-contract-sol", () => {
       [
         anchor.utils.bytes.utf8.encode("withdrawals"),
         fundlockAccount.toBuffer(),
-        clientOneUsdcBalanceState.toBuffer(),
+        clientOneUsdcBalance.toBuffer(),
       ],
       program.programId
     )[0];
@@ -717,6 +719,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientAta: clientOneUsdcAta.address,
       token: usdcMint,
       clientBalance: clientOneUsdcBalance,
+      fundlockTokenVault: fundlockTokenVault,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       whitelistedToken: whitelistedUsdcTokenAccount,
@@ -747,6 +750,7 @@ describe("ithaca-smart-contract-sol", () => {
         token: usdcMint,
         clientBalance: clientOneUsdcBalance,
         systemProgram: SystemProgram.programId,
+        fundlockTokenVault: fundlockTokenVault,
         tokenProgram: TOKEN_PROGRAM_ID,
         whitelistedToken: whitelistedUsdcTokenAccount,
         withdrawals: clientOneUsdcWithdrawals
@@ -782,6 +786,7 @@ describe("ithaca-smart-contract-sol", () => {
         clientAta: clientOneUsdcAta.address,
         token: usdcMint,
         clientBalance: clientOneUsdcBalance,
+        fundlockTokenVault: fundlockTokenVault,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         whitelistedToken: whitelistedUsdcTokenAccount,

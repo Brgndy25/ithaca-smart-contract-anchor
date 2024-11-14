@@ -1,7 +1,7 @@
 use crate::error::{FundlockError, TokenValidatorError};
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalanceState, Roles, TokenValidator, WhitelistedToken};
+use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
@@ -42,20 +42,20 @@ pub struct DepositFundlock<'info> {
     #[account(
         init_if_needed,
         payer = client,
-        seeds = [b"client_balance".as_ref(), fundlock.key().as_ref(), client_ata.key().as_ref()],
+        seeds = [b"fundlock_token_vault".as_ref(), fundlock.key().as_ref(), token.key().as_ref()],
         token::mint = token,
         token::authority = fundlock,
         bump,
     )]
-    pub client_balance: Box<Account<'info, TokenAccount>>,
+    pub fundlock_token_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = client, 
-        seeds = [b"client_balance_state".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
-        space = ClientBalanceState::INIT_SPACE,
+        seeds = [b"client_balance".as_ref(), fundlock_token_vault.key().as_ref(), client_ata.key().as_ref()],
+        space = ClientBalance::INIT_SPACE,
         bump
     )]
-    pub client_balance_state: Box<Account<'info, ClientBalanceState>>,
+    pub client_balance: Box<Account<'info, ClientBalance>>,
     #[account(
         mut,
         constraint = client_ata.mint == token.key() &&
@@ -76,16 +76,16 @@ impl<'info> DepositFundlock<'info> {
 
         let cpi_accounts = Transfer {
             from: self.client_ata.to_account_info(),
-            to: self.client_balance.to_account_info(),
+            to: self.fundlock_token_vault.to_account_info(),
             authority: self.client.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
 
         transfer(cpi_ctx, amount)?;
 
-        self.client_balance_state.set_inner(ClientBalanceState {
+        self.client_balance.set_inner(ClientBalance {
             amount: self.client_balance.amount + amount,
-            bump: bumps.client_balance_state,
+            bump: bumps.client_balance,
         });
 
         Ok(())

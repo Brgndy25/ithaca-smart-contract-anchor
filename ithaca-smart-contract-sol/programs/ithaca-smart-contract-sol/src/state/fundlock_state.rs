@@ -12,7 +12,7 @@ pub struct Fundlock {
 }
 
 #[account]
-pub struct ClientBalanceState {
+pub struct ClientBalance {
     pub amount: u64,
     pub bump: u8,
 }
@@ -39,7 +39,7 @@ impl Space for Fundlock {
     1; // bump
 }
 
-impl Space for ClientBalanceState {
+impl Space for ClientBalance {
     const INIT_SPACE: usize = 8 + // account discriminator
     8 + // amount
     1; // bump
