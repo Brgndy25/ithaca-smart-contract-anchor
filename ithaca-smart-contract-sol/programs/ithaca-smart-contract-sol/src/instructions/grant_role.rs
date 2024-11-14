@@ -44,7 +44,7 @@ impl<'info> GrantRole<'info> {
             AccessControlError::InvalidRole
         );
         self.role.set_inner(Role {
-            role: role_granted,
+            role: role_granted.clone(),
             member_count: self.role.member_count + 1,
             bump: bumps.role,
         });
@@ -52,6 +52,10 @@ impl<'info> GrantRole<'info> {
             member: new_member,
             bump: bumps.member,
         });
+
+        msg!("User {} granted role {} successfully", new_member.to_string(), role_granted);
+
         Ok(())
+
     }
 }

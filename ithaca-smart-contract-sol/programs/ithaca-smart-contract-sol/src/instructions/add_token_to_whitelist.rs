@@ -56,6 +56,12 @@ impl<'info> AddTokenToWhitelist<'info> {
             token_mint: self.new_token_to_whitelist.key(),
             bump: bumps.whitelisted_token,
         });
+
+        msg!(
+            "Token {} added to whitelist successfully",
+            self.new_token_to_whitelist.key().to_string()
+        );
+
         Ok(())
     }
 }

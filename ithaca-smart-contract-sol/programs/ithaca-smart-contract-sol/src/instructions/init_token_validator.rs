@@ -45,6 +45,9 @@ impl<'info> InitTokenValidator<'info> {
             access_controller: self.access_controller.key(),
             bump: bumps.token_validator,
         });
+
+        msg!("Token validator initialized successfully");
+
         Ok(())
     }
 }

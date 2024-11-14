@@ -72,4 +72,8 @@ pub mod ithaca_smart_contract_sol {
     pub fn withdraw_fundlock(ctx: Context<WithdrawFundlock>, amount: u64) -> Result<()> {
         ctx.accounts.withdraw_fundlock(amount, &ctx.bumps)
     }
+
+    pub fn release_fundlock(ctx: Context<ReleaseFundlock>, index: u64) -> Result<()> {
+        ctx.accounts.release_fundlock(index)
+    }
 }

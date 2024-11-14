@@ -15,6 +15,7 @@ import {
   LAMPORTS_PER_SOL,
   SystemProgram,
 } from "@solana/web3.js";
+import { set } from "@coral-xyz/anchor/dist/cjs/utils/features";
 
 const assert = require("assert");
 
@@ -55,6 +56,20 @@ async function getTokenAccountBalance(
   return amount;
 }
 
+async function printTimestamp(provider: anchor.AnchorProvider) {
+  // Fetch the Clock sysvar account
+  const clock = await provider.connection.getAccountInfo(
+    anchor.web3.SYSVAR_CLOCK_PUBKEY
+  );
+
+  if (clock) {
+    // Decode the account data to access the timestamp
+    const timestamp = new anchor.BN(clock.data.slice(32, 40), 'le').toNumber();
+    console.log("Current block timestamp:", timestamp);
+  } else {
+    console.log("Failed to retrieve Clock sysvar.");
+  }
+}
 
 describe("ithaca-smart-contract-sol", () => {
   // Configure the client to use the local cluster.
@@ -104,8 +119,10 @@ describe("ithaca-smart-contract-sol", () => {
   let fundlockTokenVault: PublicKey;
   let fetchedFundlockAccount;
 
-  let trade_lock = new anchor.BN(10 * 60 * 1000); // 10 minutes
-  let release_lock = new anchor.BN(20 * 60 * 1000); // 10 minutes
+  // let releaseLock = new anchor.BN(2 * 60 * 1000); // 2 minutes
+  let releaseLock = new anchor.BN(2 * 60); // 2 minutes in seconds
+  let tradeLock = new anchor.BN(2 * 60); // 2 minutes in seconds
+
 
   let usdcMint: PublicKey;
   let whitelistedUsdcTokenAccount: PublicKey;
@@ -510,7 +527,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Initialize Fundlock Account", async () => {
-    let initFundlockTx = await program.methods.initFundlock(trade_lock, release_lock).accountsPartial({
+    let initFundlockTx = await program.methods.initFundlock(tradeLock, releaseLock).accountsPartial({
       accessController: accessControllerAccount,
       tokenValidator: tokenValidatorAccount,
       fundlock: fundlockAccount,
@@ -525,9 +542,9 @@ describe("ithaca-smart-contract-sol", () => {
 
     assert.equal(fetchedFundlockAccount.tokenValidator.toString(), tokenValidatorAccount.toString(), "Fundlock Account not initialized");
 
-    assert.equal(fetchedFundlockAccount.tradeLock.toString(), trade_lock.toString(), "Trade Lock not initialized");
+    assert.equal(fetchedFundlockAccount.tradeLock.toString(), tradeLock.toString(), "Trade Lock not initialized");
 
-    assert.equal(fetchedFundlockAccount.releaseLock.toString(), release_lock.toString(), "Release Lock not initialized");
+    assert.equal(fetchedFundlockAccount.releaseLock.toString(), releaseLock.toString(), "Release Lock not initialized");
   });
 
   it("Create a USDC ATA for the client One", async () => {
@@ -734,6 +751,8 @@ describe("ithaca-smart-contract-sol", () => {
 
     assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[0].amount.toString(), amountToWithdrawClientOne.toString(), "Client One's USDC Withdrawal index 0 Amount not updated");
 
+    console.log("Withdraw Timestamp:", fetchedClientOneUsdcWithdrawals.withdrawalQueue[0].timestamp.toString());
+    console.log("Sysvar Timestamp", await printTimestamp(provider));
   });
 
   it("Queue 4 more withdraw requests of 1/5 of deposited amount to make sure the withdrawals account can haold all the states", async () => {
@@ -815,5 +834,77 @@ describe("ithaca-smart-contract-sol", () => {
     for (let i = 0; i < 4; i++) {
       assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[i].amount.toString(), withdrawAmount.toString(), `Client One's USDC Withdrawal index ${i} Amount should not have changed`);
     }
+  });
+
+  it("Try to release the first withdraw request while release lock is active (should fail)", async () => {
+    let index = new anchor.BN(0);
+
+
+    try {
+      let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
+        accessController: accessControllerAccount,
+        tokenValidator: tokenValidatorAccount,
+        role: roleAccountAdmin,
+        fundlock: fundlockAccount,
+        client: clientOne.publicKey,
+        clientAta: clientOneUsdcAta.address,
+        token: usdcMint,
+        clientBalance: clientOneUsdcBalance,
+        fundlockTokenVault: fundlockTokenVault,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        whitelistedToken: whitelistedUsdcTokenAccount,
+        withdrawals: clientOneUsdcWithdrawals
+      }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+      // If the transaction succeeds, the test should fail
+      assert.fail("The transaction should have failed.");
+    } catch (err) {
+      // Check that the error is the expected one
+      console.log("Expected error:", err);
+      assert.ok(err, "The transaction failed as expected.");
+    }
+    console.log(await printTimestamp(provider));
+  });
+
+  it("Wait for 2 minutes to pass", async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 2))
+    console.log("WAIT", await printTimestamp(provider));
+
+  });
+
+  it("Release the first withdraw request after release lock passes", async () => {
+    let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
+    let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+    let index = new anchor.BN(0);
+    let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
+
+    let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
+      accessController: accessControllerAccount,
+      tokenValidator: tokenValidatorAccount,
+      role: roleAccountAdmin,
+      fundlock: fundlockAccount,
+      client: clientOne.publicKey,
+      clientAta: clientOneUsdcAta.address,
+      token: usdcMint,
+      clientBalance: clientOneUsdcBalance,
+      fundlockTokenVault: fundlockTokenVault,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      withdrawals: clientOneUsdcWithdrawals
+    }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+    let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+    let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
+
+    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
+
+    assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
+
+    assert.equal(await getTokenAccountBalance(provider.connection, fundlockTokenVault), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Fundlock USDC Balance not updated");
+
+    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
   });
 });

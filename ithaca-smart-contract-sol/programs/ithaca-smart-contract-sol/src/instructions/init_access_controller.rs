@@ -54,6 +54,8 @@ impl<'info> InitAccessController<'info> {
             member: self.admin.key(),
             bump: bumps.member,
         });
+
+        msg!("Access controller initialized successfully");
         Ok(())
     }
 }

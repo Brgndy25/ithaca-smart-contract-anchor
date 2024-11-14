@@ -47,6 +47,8 @@ impl<'info> InitFundlock<'info> {
             release_lock,
             bump: bumps.fundlock,
         });
+
+        msg!("Fundlock initialized successfully");
         Ok(())
     }
 }

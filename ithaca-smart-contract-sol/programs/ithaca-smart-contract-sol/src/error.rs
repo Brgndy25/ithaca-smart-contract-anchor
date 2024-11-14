@@ -28,4 +28,10 @@ pub enum FundlockError {
     InsufficientFunds,
     #[msg("The withdrawal queue limit of 5 has been reached")]
     WithdrawalLimitReached,
+    #[msg("Withdrawal under this index is not found")]
+    InvalidIndex,
+    #[msg("The withdrawal is still in a release lock state")]
+    ReleaseLockActive,
+    #[msg("Insufficient funds in fundlock vault for the operation")]
+    InsufficientFundsInVault,
 }
