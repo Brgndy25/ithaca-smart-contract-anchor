@@ -1,13 +1,14 @@
 use crate::error::{FundlockError, TokenValidatorError};
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalanceState, Roles, TokenValidator, WhitelistedToken};
+use crate::{
+    ClientBalanceState, Roles, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals,
+};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(Accounts)]
-// Boxing all the account to avoid stack overflow
-pub struct DepositFundlock<'info> {
+pub struct WithdrawFundlock<'info> {
     #[account(mut)]
     pub client: Signer<'info>,
     #[account(
@@ -40,8 +41,6 @@ pub struct DepositFundlock<'info> {
     )]
     pub whitelisted_token: Box<Account<'info, WhitelistedToken>>,
     #[account(
-        init_if_needed,
-        payer = client,
         seeds = [b"client_balance".as_ref(), fundlock.key().as_ref(), client_ata.key().as_ref()],
         token::mint = token,
         token::authority = fundlock,
@@ -49,11 +48,8 @@ pub struct DepositFundlock<'info> {
     )]
     pub client_balance: Box<Account<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = client, 
         seeds = [b"client_balance_state".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
-        space = ClientBalanceState::INIT_SPACE,
-        bump
+        bump = client_balance_state.bump
     )]
     pub client_balance_state: Box<Account<'info, ClientBalanceState>>,
     #[account(
@@ -62,31 +58,40 @@ pub struct DepositFundlock<'info> {
         client_ata.owner == client.key()
     )]
     pub client_ata: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = client,
+        seeds = [b"withdrawals".as_ref(), fundlock.key().as_ref(), client_balance_state.key().as_ref()],
+        space = Withdrawals::INIT_SPACE,
+        bump,
+    )]
+    pub withdrawals: Box<Account<'info, Withdrawals>>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> DepositFundlock<'info> {
-    pub fn deposit_fundlock(&mut self, amount: u64, bumps: &DepositFundlockBumps) -> Result<()> {
+impl<'info> WithdrawFundlock<'info> {
+    pub fn withdraw_fundlock(&mut self, amount: u64, bumps: &WithdrawFundlockBumps) -> Result<()> {
         require!(amount > 0, FundlockError::AmountZero);
         require!(
-            self.whitelisted_token.token_mint == self.token.key(),
-            TokenValidatorError::TokenNotWhitelisted
+            self.client_balance_state.amount > amount,
+            FundlockError::InsufficientFunds
+        );
+        require!(
+            self.withdrawals.withdrawal_queue.len() < 5,
+            FundlockError::WithdrawalLimitReached
         );
 
-        let cpi_accounts = Transfer {
-            from: self.client_ata.to_account_info(),
-            to: self.client_balance.to_account_info(),
-            authority: self.client.to_account_info(),
+        let withdrawal = WithdrawalState {
+            amount,
+            timestamp: Clock::get()?.unix_timestamp,
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
 
-        transfer(cpi_ctx, amount)?;
+        self.withdrawals.withdrawal_queue.push(withdrawal);
 
-        self.client_balance_state.set_inner(ClientBalanceState {
-            amount: self.client_balance.amount + amount,
-            bump: bumps.client_balance_state,
-        });
+        self.client_balance_state.amount -= amount;
+        self.withdrawals.active_withdrawals_amount += amount;
+        self.withdrawals.bump = bumps.withdrawals;
 
         Ok(())
     }

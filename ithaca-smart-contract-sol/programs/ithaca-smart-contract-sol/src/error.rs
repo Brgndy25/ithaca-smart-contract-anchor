@@ -26,4 +26,6 @@ pub enum FundlockError {
     AmountZero,
     #[msg("Insufficient funds for the operation")]
     InsufficientFunds,
+    #[msg("The withdrawal queue limit of 5 has been reached")]
+    WithdrawalLimitReached,
 }

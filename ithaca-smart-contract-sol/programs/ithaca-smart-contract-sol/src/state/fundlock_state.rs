@@ -21,12 +21,12 @@ pub struct ClientBalanceState {
 pub struct WithdrawalState {
     pub amount: u64,
     pub timestamp: i64,
-    pub bump: u8,
 }
 
 #[account]
-pub struct WithdrawalsQueue {
-    pub withdrawals: Vec<WithdrawalState>,
+pub struct Withdrawals {
+    pub withdrawal_queue: Vec<WithdrawalState>,
+    pub active_withdrawals_amount: u64,
     pub bump: u8,
 }
 
@@ -45,15 +45,9 @@ impl Space for ClientBalanceState {
     1; // bump
 }
 
-impl Space for WithdrawalState {
+impl Space for Withdrawals {
     const INIT_SPACE: usize = 8 + // account discriminator
-    8 + // amount
-    8 + // timestamp
-    1; // bump
-}
-
-impl Space for WithdrawalsQueue {
-    const INIT_SPACE: usize = 8 + // account discriminator
-    4 + (ALLOWED_WITHDRAWAL_LIMIT * 24) + // withdrawals limited to 5 per client
+    4 + (ALLOWED_WITHDRAWAL_LIMIT * 16) + // withdrawals limited to 5 per client
+    8 + // active withdrawals amount
     8; // bump
 }

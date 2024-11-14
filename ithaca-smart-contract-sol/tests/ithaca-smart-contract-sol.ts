@@ -83,7 +83,11 @@ describe("ithaca-smart-contract-sol", () => {
   let clientOneMockAta: Account;
   let clientOneMockBalance: PublicKey;
   let clientOneMockBalanceState: PublicKey;
+  let clientOneUsdcWithdrawals: PublicKey;
+  let fetchedClientOneUsdcWithdrawals;
+  let fetchedClientOneUsdcBalanceState;
   const amountToDepositClientOne = new anchor.BN(10000000);
+  const amountToWithdrawClientOne = new anchor.BN((amountToDepositClientOne.toNumber() / 5));
 
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
@@ -553,27 +557,28 @@ describe("ithaca-smart-contract-sol", () => {
 
   it("Find a balance PDA for client one's USDC and state PDA", async () => {
 
-    clientOneUsdcBalanceState = PublicKey.findProgramAddressSync(
+    clientOneUsdcBalance = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance_state"),
+        anchor.utils.bytes.utf8.encode("client_balance"),
         fundlockAccount.toBuffer(),
         clientOneUsdcAta.address.toBuffer(),
       ],
       program.programId
     )[0];
 
-    console.log("Client One's USDC Balance State:", clientOneUsdcBalanceState.toString());
+    console.log("Client One's USDC Balance:", clientOneUsdcBalance.toString());
 
-    clientOneUsdcBalance = PublicKey.findProgramAddressSync(
+    clientOneUsdcBalanceState = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance"),
+        anchor.utils.bytes.utf8.encode("client_balance_state"),
         fundlockAccount.toBuffer(),
-        clientOneUsdcBalanceState.toBuffer(),
+        clientOneUsdcBalance.toBuffer(),
       ],
       program.programId
     )[0];
 
-    console.log("Client One's USDC Balance:", clientOneUsdcBalance.toString());
+    console.log("Client One's USDC Balance State:", clientOneUsdcBalanceState.toString());
+
 
 
   });
@@ -594,7 +599,11 @@ describe("ithaca-smart-contract-sol", () => {
       whitelistedToken: whitelistedUsdcTokenAccount,
     }).signers([clientOne]).rpc().then(confirmTx).then(log);
 
+    fetchedClientOneUsdcBalanceState = await program.account.clientBalanceState.fetch(clientOneUsdcBalanceState);
+
     assert.equal((await getTokenAccountBalance(provider.connection, clientOneUsdcBalance)).toString(), amountToDepositClientOne.toString(), "USDC not deposited to fundlock");
+
+    assert.equal(fetchedClientOneUsdcBalanceState.amount.toString(), amountToDepositClientOne.toString(), "Client One's USDC Balance State not updated");
   });
 
   it("Create a Mock Token ATA for the client One", async () => {
@@ -605,7 +614,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientOne.publicKey
     );
 
-    console.log("Client one's USDC Ata:", clientOneMockAta.toString());
+    console.log("Client one's Mock Ata:", clientOneMockAta.toString());
   });
 
   it("Mint Mock Token to the client One", async () => {
@@ -618,32 +627,34 @@ describe("ithaca-smart-contract-sol", () => {
       1000000000
     );
 
-    assert.equal(await getTokenAccountBalance(provider.connection, clientOneMockAta.address), "1000000000", "USDC not minted to client one");
+    assert.equal(await getTokenAccountBalance(provider.connection, clientOneMockAta.address), "1000000000", "Mock not minted to client one");
 
     console.log("Mint to Client One Transaction:", mintToClientOneTx.toString());
   });
 
   it("Find a balance PDA for client one's Mock Token and state PDA", async () => {
-    clientOneMockBalanceState = PublicKey.findProgramAddressSync(
+
+    clientOneMockBalance = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance_state"),
+        anchor.utils.bytes.utf8.encode("client_balance"),
         fundlockAccount.toBuffer(),
         clientOneMockAta.address.toBuffer(),
       ],
       program.programId
     )[0];
 
-    console.log("Client One's Mock Balance State:", clientOneMockBalanceState.toString());
-    clientOneMockBalance = PublicKey.findProgramAddressSync(
+    console.log("Client One's Mock Balance:", clientOneMockBalance.toString());
+
+    clientOneMockBalanceState = PublicKey.findProgramAddressSync(
       [
-        anchor.utils.bytes.utf8.encode("client_balance"),
+        anchor.utils.bytes.utf8.encode("client_balance_state"),
         fundlockAccount.toBuffer(),
-        clientOneMockBalanceState.toBuffer(),
+        clientOneMockBalance.toBuffer(),
       ],
       program.programId
     )[0];
 
-    console.log("Client One's Mock Balance:", clientOneMockBalance.toString());
+    console.log("Client One's Mock Balance State:", clientOneMockBalanceState.toString());
 
   });
 
@@ -683,8 +694,21 @@ describe("ithaca-smart-contract-sol", () => {
     }
   });
 
-  /*it("SEED TEST WITHDRAW", async () => {
-    let depositUsdcTx = await program.methods.withdrawFundlock().accountsPartial({
+  it(" Find Withdrawals PDA for client one's USDC", async () => {
+    clientOneUsdcWithdrawals = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("withdrawals"),
+        fundlockAccount.toBuffer(),
+        clientOneUsdcBalanceState.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One's USDC Withdrawals:", clientOneUsdcWithdrawals.toString());
+  });
+
+  it("Que a withdraw request of 1/5 of deposited amount", async () => {
+    let withdrawUsdcTx = await program.methods.withdrawFundlock(amountToWithdrawClientOne).accountsPartial({
       accessController: accessControllerAccount,
       tokenValidator: tokenValidatorAccount,
       role: roleAccountAdmin,
@@ -696,7 +720,95 @@ describe("ithaca-smart-contract-sol", () => {
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       whitelistedToken: whitelistedUsdcTokenAccount,
+      withdrawals: clientOneUsdcWithdrawals
     }).signers([clientOne]).rpc().then(confirmTx).then(log);
 
-  });*/
+    fetchedClientOneUsdcWithdrawals = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+    assert.equal(fetchedClientOneUsdcWithdrawals.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.toString(), "Client active withdrawals amount not updated");
+
+    assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue.length, 1, "Client One's USDC Withdrawals Queue not updated");
+
+    assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[0].amount.toString(), amountToWithdrawClientOne.toString(), "Client One's USDC Withdrawal index 0 Amount not updated");
+
+  });
+
+  it("Queue 4 more withdraw requests of 1/5 of deposited amount to make sure the withdrawals account can haold all the states", async () => {
+    const withdrawAmount = amountToWithdrawClientOne;
+
+    for (let i = 0; i < 4; i++) {
+      await program.methods.withdrawFundlock(withdrawAmount).accountsPartial({
+        accessController: accessControllerAccount,
+        tokenValidator: tokenValidatorAccount,
+        role: roleAccountAdmin,
+        fundlock: fundlockAccount,
+        client: clientOne.publicKey,
+        clientAta: clientOneUsdcAta.address,
+        token: usdcMint,
+        clientBalance: clientOneUsdcBalance,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        whitelistedToken: whitelistedUsdcTokenAccount,
+        withdrawals: clientOneUsdcWithdrawals
+      }).signers([clientOne]).rpc().then(confirmTx).then(log);
+    }
+
+    fetchedClientOneUsdcWithdrawals = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+    // Assert the total active withdrawals amount
+    const expectedTotalWithdrawAmount = withdrawAmount.mul(new anchor.BN(5));
+    assert.equal(fetchedClientOneUsdcWithdrawals.activeWithdrawalsAmount.toString(), expectedTotalWithdrawAmount.toString(), "Client active withdrawals amount not updated");
+
+    // Assert the length of the withdrawal queue
+    assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue.length, 5, "Client One's USDC Withdrawals Queue not updated");
+
+    // Assert each withdrawal in the queue
+    for (let i = 0; i < 4; i++) {
+      assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[i].amount.toString(), withdrawAmount.toString(), `Client One's USDC Withdrawal index ${i} Amount not updated`);
+    }
+  });
+
+  it("Attempt to queue an additional withdraw request (should fail)", async () => {
+    const withdrawAmount = amountToWithdrawClientOne;
+
+    // Perform the additional withdrawal
+    try {
+      await program.methods.withdrawFundlock(withdrawAmount).accountsPartial({
+        accessController: accessControllerAccount,
+        tokenValidator: tokenValidatorAccount,
+        role: roleAccountAdmin,
+        fundlock: fundlockAccount,
+        client: clientOne.publicKey,
+        clientAta: clientOneUsdcAta.address,
+        token: usdcMint,
+        clientBalance: clientOneUsdcBalance,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        whitelistedToken: whitelistedUsdcTokenAccount,
+        withdrawals: clientOneUsdcWithdrawals
+      }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+      // If the transaction succeeds, the test should fail
+      assert.fail("The transaction should have failed.");
+    } catch (err) {
+      // Check that the error is the expected one
+      console.log("Expected error:", err);
+      assert.ok(err, "The transaction failed as expected.");
+    }
+
+    // Fetch the withdrawals account to verify no changes were made
+    fetchedClientOneUsdcWithdrawals = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+    // Assert the total active withdrawals amount remains the same
+    const expectedTotalWithdrawAmount = withdrawAmount.mul(new anchor.BN(5));
+    assert.equal(fetchedClientOneUsdcWithdrawals.activeWithdrawalsAmount.toString(), expectedTotalWithdrawAmount.toString(), "Client active withdrawals amount should not have changed");
+
+    // Assert the length of the withdrawal queue remains the same
+    assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue.length, 5, "Client One's USDC Withdrawals Queue length should not have changed");
+
+    // Assert each withdrawal in the queue remains the same
+    for (let i = 0; i < 4; i++) {
+      assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[i].amount.toString(), withdrawAmount.toString(), `Client One's USDC Withdrawal index ${i} Amount should not have changed`);
+    }
+  });
 });
