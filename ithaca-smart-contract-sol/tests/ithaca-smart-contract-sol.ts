@@ -1024,7 +1024,7 @@ describe("ithaca-smart-contract-sol", () => {
     let clientTwoUpdatedBalance = fetchedClientTwoUsdcBalanceBefore.amount.add(amountsToAdd);
 
 
-    await program.methods.updateBalancesFundlock(amounts, backendId).accountsPartial({
+    let updateBalancesTx = await program.methods.updateBalancesFundlock(amounts, backendId).accountsPartial({
       caller: admin.publicKey,
       accessController: accessControllerAccount,
       role: roleAccountAdmin,
@@ -1041,6 +1041,23 @@ describe("ithaca-smart-contract-sol", () => {
 
     let fetchedClientTwoUsdcBalanceAfter = await program.account.clientBalance.fetch(clientTwoUsdcBalance);
     assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), clientTwoUpdatedBalance.toString(), "Client Two's USDC Balance not updated");
+  });
+
+  it("Should print the balance sheet", async () => {
+    let balanceSheet = await program.methods.balanceSheetFundlock().accountsPartial({
+      caller: payer.publicKey,
+      client: clientOne.publicKey,
+      accessController: accessControllerAccount,
+      role: roleAccountAdmin,
+      token: usdcMint,
+      fundlock: fundlockAccount,
+      fundlockTokenVault: fundlockTokenVault,
+      clientAta: clientOneUsdcAta.address,
+      clientBalance: clientOneUsdcBalance,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      tokenValidator: tokenValidatorAccount,
+      systemProgram: SystemProgram.programId,
+    }).signers([payer]).rpc().then(log);
   });
 
 });

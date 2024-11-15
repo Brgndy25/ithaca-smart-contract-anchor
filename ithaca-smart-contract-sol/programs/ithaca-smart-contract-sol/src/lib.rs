@@ -97,4 +97,8 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts
             .update_balances_fundlock(amounts, clients, account_datas, backend_id)
     }
+
+    pub fn balance_sheet_fundlock(ctx: Context<BalanceSheetFundlock>) -> Result<()> {
+        ctx.accounts.balance_sheet_fundlock()
+    }
 }

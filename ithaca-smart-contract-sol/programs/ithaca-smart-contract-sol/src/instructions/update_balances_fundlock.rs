@@ -1,7 +1,7 @@
 use crate::error::FundlockError;
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalance, Ledger, Roles, TokenValidator};
+use crate::{ClientBalance, Roles, TokenValidator};
 use anchor_lang::prelude::*;
 use std::cell::RefMut;
 
