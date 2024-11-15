@@ -49,3 +49,7 @@ pub use update_balances_fundlock::*;
 pub mod balance_sheet_fundlock;
 
 pub use balance_sheet_fundlock::*;
+
+pub mod fund_from_withdrawal;
+
+pub use fund_from_withdrawal::*;
