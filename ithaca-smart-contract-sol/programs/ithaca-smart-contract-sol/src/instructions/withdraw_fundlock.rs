@@ -112,7 +112,6 @@ impl<'info> WithdrawFundlock<'info> {
             amount,
             index
         );
-
         Ok(())
     }
 }

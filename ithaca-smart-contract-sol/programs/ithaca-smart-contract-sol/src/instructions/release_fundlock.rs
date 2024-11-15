@@ -1,7 +1,7 @@
 use crate::error::{FundlockError, TokenValidatorError};
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals};
+use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken, Withdrawals};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
@@ -110,7 +110,7 @@ impl<'info> ReleaseFundlock<'info> {
             fundlock_seeds,
         );
 
-        transfer(cpi_ctx, amount_released);
+        transfer(cpi_ctx, amount_released).expect("Error transferring tokens");
 
         self.withdrawals.withdrawal_queue.remove(index as usize);
         self.withdrawals.active_withdrawals_amount -= amount_released;

@@ -41,3 +41,7 @@ pub use withdraw_fundlock::*;
 pub mod release_fundlock;
 
 pub use release_fundlock::*;
+
+pub mod update_balances_fundlock;
+
+pub use update_balances_fundlock::*;

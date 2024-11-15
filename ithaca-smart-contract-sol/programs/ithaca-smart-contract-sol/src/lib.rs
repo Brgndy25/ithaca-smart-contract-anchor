@@ -13,6 +13,8 @@ declare_id!("DUT4uZiHydPwJtvPDzDPMtNuxoMbfJi5uuFWcq6UPxbk");
 
 #[program]
 pub mod ithaca_smart_contract_sol {
+    use std::cell::RefMut;
+
     use super::*;
 
     pub fn init_access_controller(ctx: Context<InitAccessController>) -> Result<()> {
@@ -75,5 +77,24 @@ pub mod ithaca_smart_contract_sol {
 
     pub fn release_fundlock(ctx: Context<ReleaseFundlock>, index: u64) -> Result<()> {
         ctx.accounts.release_fundlock(index)
+    }
+
+    pub fn update_balances_fundlock(
+        ctx: Context<UpdateBalancesFundlock>,
+        amounts: Vec<u64>,
+        backend_id: u64,
+    ) -> Result<()> {
+        let mut account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let mut clients: Vec<Pubkey> = Vec::new();
+        let remaining_accounts = &ctx.remaining_accounts;
+        for i in 0..remaining_accounts.len() {
+            let data = remaining_accounts[i]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            account_datas.push(data);
+            clients.push(remaining_accounts[i].key());
+        }
+        ctx.accounts
+            .update_balances_fundlock(amounts, clients, account_datas, backend_id)
     }
 }

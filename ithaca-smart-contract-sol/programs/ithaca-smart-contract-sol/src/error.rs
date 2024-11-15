@@ -34,4 +34,6 @@ pub enum FundlockError {
     ReleaseLockActive,
     #[msg("Insufficient funds in fundlock vault for the operation")]
     InsufficientFundsInVault,
+    #[msg("Invalid amount of accounts provided")]
+    InvalidAccountsAmount,
 }
