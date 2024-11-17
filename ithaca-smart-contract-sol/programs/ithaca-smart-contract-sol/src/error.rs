@@ -36,4 +36,6 @@ pub enum FundlockError {
     InsufficientFundsInVault,
     #[msg("Invalid amount of accounts provided")]
     InvalidAccountsAmount,
+    #[msg("Account order for update balances violated")]
+    AccountOrderViolated
 }

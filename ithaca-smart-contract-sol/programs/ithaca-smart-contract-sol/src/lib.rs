@@ -79,23 +79,40 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts.release_fundlock(index)
     }
 
+    // Expect accounts to be passed in order of:
+    // 0.Client Balance in remaining accounts[0]
+    // 1.Withdrawals associated with the client balance in remaining accounts[1]
+    // 2.Token Associated with the Client Balance in tokens[0]
+    // 3.Client ATA in clients_ata[0]
+
     pub fn update_balances_fundlock(
         ctx: Context<UpdateBalancesFundlock>,
-        amounts: Vec<u64>,
+        amounts: Vec<i64>,
+        tokens: Vec<Pubkey>,
+        clients_ata: Vec<Pubkey>,
         backend_id: u64,
     ) -> Result<()> {
-        let mut account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
-        let mut clients: Vec<Pubkey> = Vec::new();
+        let mut client_balance_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let mut withdrawals_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
         let remaining_accounts = &ctx.remaining_accounts;
-        for i in 0..remaining_accounts.len() {
-            let data = remaining_accounts[i]
+        for i in (0..remaining_accounts.len()).step_by(2) {
+            let client_data = remaining_accounts[i]
                 .try_borrow_mut_data()
                 .expect("Error borrowing data");
-            account_datas.push(data);
-            clients.push(remaining_accounts[i].key());
+            client_balance_account_datas.push(client_data);
+            let withdrawal_data = remaining_accounts[i + 1]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            withdrawals_account_datas.push(withdrawal_data);
         }
-        ctx.accounts
-            .update_balances_fundlock(amounts, clients, account_datas, backend_id)
+        ctx.accounts.update_balances_fundlock(
+            amounts,
+            clients_ata,
+            tokens,
+            client_balance_account_datas,
+            withdrawals_account_datas,
+            backend_id,
+        )
     }
 
     pub fn balance_sheet_fundlock(ctx: Context<BalanceSheetFundlock>) -> Result<()> {

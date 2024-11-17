@@ -38,7 +38,7 @@ pub struct AddTokenToWhitelist<'info> {
         payer = admin,
         seeds = [b"whitelisted_token".as_ref(), token_validator.key().as_ref(), new_token_to_whitelist.key().as_ref()],
         space = WhitelistedToken::INIT_SPACE,
-        bump
+        bump,
     )]
     pub whitelisted_token: Account<'info, WhitelistedToken>,
     pub system_program: Program<'info, System>,
@@ -54,6 +54,7 @@ impl<'info> AddTokenToWhitelist<'info> {
         );
         self.whitelisted_token.set_inner(WhitelistedToken {
             token_mint: self.new_token_to_whitelist.key(),
+            token_decimals: self.new_token_to_whitelist.decimals,
             bump: bumps.whitelisted_token,
         });
 

@@ -1,7 +1,7 @@
 use crate::error::{FundlockError, TokenValidatorError};
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken};
+use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken, Withdrawals};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
@@ -62,6 +62,14 @@ pub struct DepositFundlock<'info> {
         client_ata.owner == client.key()
     )]
     pub client_ata: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = client,
+        seeds = [b"withdrawals".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
+        space = Withdrawals::INIT_SPACE,
+        bump,
+    )]
+    pub withdrawals: Box<Account<'info, Withdrawals>>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -85,8 +93,12 @@ impl<'info> DepositFundlock<'info> {
 
         self.client_balance.set_inner(ClientBalance {
             amount: self.client_balance.amount + amount,
+            token: self.token.key(),
+            client_ata: self.client_ata.key(),
             bump: bumps.client_balance,
         });
+
+        self.withdrawals.bump = bumps.withdrawals;
 
         Ok(())
     }

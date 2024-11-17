@@ -48,7 +48,8 @@ pub struct WithdrawFundlock<'info> {
         bump,
     )]
     pub fundlock_token_vault: Box<Account<'info, TokenAccount>>,
-    #[account(
+    #[account( 
+        mut,
         seeds = [b"client_balance".as_ref(), fundlock_token_vault.key().as_ref(), client_ata.key().as_ref()],
         bump = client_balance.bump
     )]
@@ -59,11 +60,9 @@ pub struct WithdrawFundlock<'info> {
     )]
     pub client_ata: Box<Account<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = client,
+        mut,
         seeds = [b"withdrawals".as_ref(), fundlock.key().as_ref(), client_balance.key().as_ref()],
-        space = Withdrawals::INIT_SPACE,
-        bump,
+        bump = withdrawals.bump
     )]
     pub withdrawals: Box<Account<'info, Withdrawals>>,
     pub system_program: Program<'info, System>,
@@ -89,9 +88,16 @@ impl<'info> WithdrawFundlock<'info> {
 
         self.withdrawals.withdrawal_queue.push(withdrawal);
 
-        self.client_balance.amount -= amount;
+        self.client_balance.set_inner(ClientBalance {
+            amount: self.client_balance.amount - amount,
+            token: self.token.key(),
+            client_ata: self.client_ata.key(),
+            bump: self.client_balance.bump,
+        });
+
         self.withdrawals.active_withdrawals_amount += amount;
-        self.withdrawals.bump = bumps.withdrawals;
+        self.withdrawals.client_ata = self.client_ata.key();
+        // self.withdrawals.bump = bumps.withdrawals;
 
         let index = self.withdrawals.withdrawal_queue.len() - 1;
 

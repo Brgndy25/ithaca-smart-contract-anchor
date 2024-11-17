@@ -11,6 +11,7 @@ pub struct TokenValidator {
 #[account]
 pub struct WhitelistedToken {
     pub token_mint: Pubkey,
+    pub token_decimals: u8,
     pub bump: u8,
 }
 
@@ -23,5 +24,6 @@ impl Space for TokenValidator {
 impl Space for WhitelistedToken {
     const INIT_SPACE: usize = 8 + // account discriminator
     32 + // token mint pubkey
+    1 + // token decimals
     1; // bump
 }
