@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("DUT4uZiHydPwJtvPDzDPMtNuxoMbfJi5uuFWcq6UPxbk");
+declare_id!("DDR8cZjBWm42Js91RKoYq95f243N7i5PcAwB9X4gUvjM");
 
 #[program]
 pub mod ithaca_smart_contract_sol {
@@ -72,7 +72,7 @@ pub mod ithaca_smart_contract_sol {
     }
 
     pub fn withdraw_fundlock(ctx: Context<WithdrawFundlock>, amount: u64) -> Result<()> {
-        ctx.accounts.withdraw_fundlock(amount, &ctx.bumps)
+        ctx.accounts.withdraw_fundlock(amount)
     }
 
     pub fn release_fundlock(ctx: Context<ReleaseFundlock>, index: u64) -> Result<()> {

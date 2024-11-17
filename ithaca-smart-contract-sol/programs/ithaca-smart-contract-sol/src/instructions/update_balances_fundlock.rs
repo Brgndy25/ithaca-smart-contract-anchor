@@ -51,50 +51,53 @@ impl<'info> UpdateBalancesFundlock<'info> {
             FundlockError::InvalidAccountsAmount
         );
         for i in 0..client_balance_account_datas.len() {
-            let client_balance_data = &mut client_balance_account_datas[i];
-            let mut client_balance =
-                ClientBalance::try_deserialize(&mut client_balance_data.as_ref())
-                    .expect("Error Deserializing Client Balance");
-            require!(
-                client_balance.token == tokens[i] && client_balance.client_ata == client_atas[i],
-                FundlockError::AccountOrderViolated
-            );
-
-            let withdrawals_data = &mut withdrawals_account_datas[i];
-
-            let mut withdrawals_account_info =
-                Withdrawals::try_deserialize(&mut withdrawals_data.as_ref())
-                    .expect("Error Deserializing Withdrawals");
-
-            let client_ata_from_withdrawals = withdrawals_account_info.client_ata;
-
-            require!(
-                client_ata_from_withdrawals == client_atas[i],
-                FundlockError::AccountOrderViolated
-            );
-               
-            let change_in_balance: i64;
-
-            if amounts[i] > 0 || client_balance.amount >= amounts[i].abs() as u64 {
-                change_in_balance = amounts[i];
-            } else {
-                let amount_to_deduct = amounts[i].abs() as u64;
-                change_in_balance = -(client_balance.amount as i64);
-                let shortage = amount_to_deduct - client_balance.amount;
+            {
+                let client_balance_data = &mut client_balance_account_datas[i];
+                let mut client_balance =
+                    ClientBalance::try_deserialize(&mut client_balance_data.as_ref())
+                        .expect("Error Deserializing Client Balance");
                 require!(
-                    self.fund_from_withdrawal(
-                        client_atas[i],
-                        tokens[i],
-                        shortage,
-                        withdrawals_data
-                    ),
-                    FundlockError::InsufficientFunds
+                    client_balance.token == tokens[i]
+                        && client_balance.client_ata == client_atas[i],
+                    FundlockError::AccountOrderViolated
                 );
+
+                let withdrawals_data = &mut withdrawals_account_datas[i];
+
+                let mut withdrawals_account_info =
+                    Withdrawals::try_deserialize(&mut withdrawals_data.as_ref())
+                        .expect("Error Deserializing Withdrawals");
+
+                let client_ata_from_withdrawals = withdrawals_account_info.client_ata;
+
+                require!(
+                    client_ata_from_withdrawals == client_atas[i],
+                    FundlockError::AccountOrderViolated
+                );
+
+                let change_in_balance: i64;
+
+                if amounts[i] > 0 || client_balance.amount >= amounts[i].abs() as u64 {
+                    change_in_balance = amounts[i];
+                } else {
+                    let amount_to_deduct = amounts[i].abs() as u64;
+                    change_in_balance = -(client_balance.amount as i64);
+                    let shortage = amount_to_deduct - client_balance.amount;
+                    require!(
+                        self.fund_from_withdrawal(
+                            client_atas[i],
+                            tokens[i],
+                            shortage,
+                            withdrawals_data
+                        ),
+                        FundlockError::InsufficientFunds
+                    );
+                }
+                client_balance.amount = (client_balance.amount as i64 + change_in_balance) as u64;
+                client_balance
+                    .try_serialize(&mut **client_balance_data)
+                    .expect("Error Serializing Client Balance");
             }
-            client_balance.amount = (client_balance.amount as i64 + change_in_balance) as u64;
-            client_balance
-                .try_serialize(&mut **client_balance_data)
-                .expect("Error Serializing Client Balance");
         }
         msg!("Balances updated successfully! Backend ID: {}", backend_id);
         Ok(())
@@ -109,7 +112,6 @@ impl<'info> UpdateBalancesFundlock<'info> {
     ) -> bool {
         let mut funded_sum: u64 = 0;
         let trade_lock = self.fundlock.trade_lock;
-        //let withdrawal_data = &mut withdrawal_data[0];
         let mut withdrawal_account_info =
             Withdrawals::try_deserialize(&mut withdrawal_data.as_ref())
                 .expect("Error Deserializing Withdrawals");

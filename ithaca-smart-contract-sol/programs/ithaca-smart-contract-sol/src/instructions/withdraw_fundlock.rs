@@ -70,7 +70,7 @@ pub struct WithdrawFundlock<'info> {
 }
 
 impl<'info> WithdrawFundlock<'info> {
-    pub fn withdraw_fundlock(&mut self, amount: u64, bumps: &WithdrawFundlockBumps) -> Result<()> {
+    pub fn withdraw_fundlock(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, FundlockError::AmountZero);
         require!(
             self.client_balance.amount >= amount,

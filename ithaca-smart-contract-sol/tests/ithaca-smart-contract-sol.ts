@@ -83,6 +83,7 @@ describe("ithaca-smart-contract-sol", () => {
 
   //Admin Keypair
   const admin = Keypair.generate();
+  console.log("Admin Keypair:", admin.publicKey.toString());
 
   // Utility Account Keypair
   const utilityAccount = Keypair.generate();
@@ -119,7 +120,7 @@ describe("ithaca-smart-contract-sol", () => {
   let fetchedClientThreeUsdcWithdrawals;
   let fetchedClientThreeUsdcBalance;
   const amountToDepositClientThree = new anchor.BN(5000000);
-  const amountToWithdrawClientThree = new anchor.BN((amountToDepositClientThree.toNumber() / 5));
+  const amountToWithdrawClientThree = amountToDepositClientThree;
 
   // Roles
   const ADMIN_ROLE: string = "DEFAULT_ADMIN_ROLE";
@@ -137,8 +138,8 @@ describe("ithaca-smart-contract-sol", () => {
   let fetchedFundlockAccount;
 
   // let releaseLock = new anchor.BN(2 * 60 * 1000); // 2 minutes
-  let releaseLock = new anchor.BN(2 * 60); // 2 minutes in seconds
-  let tradeLock = new anchor.BN(2 * 60); // 2 minutes in seconds
+  let releaseLock = new anchor.BN(30); // 30 seconds
+  let tradeLock = new anchor.BN(30); // 30 seconds
 
 
   let usdcMint: PublicKey;
@@ -572,7 +573,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientOne.publicKey
     );
 
-    console.log("Client one's USDC Ata:", clientOneUsdcAta.toString());
+    console.log("Client one's USDC Ata:", clientOneUsdcAta.address.toString());
   });
 
   it("Create a USDC ATA for the client two", async () => {
@@ -583,7 +584,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientTwo.publicKey
     );
 
-    console.log("Client two's USDC Ata:", clientTwoUsdcAta.toString());
+    console.log("Client two's USDC Ata:", clientTwoUsdcAta.address.toString());
   });
 
   it("Create a USDC ATA for the client three", async () => {
@@ -594,7 +595,7 @@ describe("ithaca-smart-contract-sol", () => {
       clientThree.publicKey
     );
 
-    console.log("Client three's USDC Ata:", clientThreeUsdcAta.toString());
+    console.log("Client three's USDC Ata:", clientThreeUsdcAta.address.toString());
   });
 
   it("Mint USDC to the client One", async () => {
@@ -699,6 +700,45 @@ describe("ithaca-smart-contract-sol", () => {
 
     console.log("Client Three's USDC Balance:", clientThreeUsdcBalance.toString());
 
+  });
+
+  it("Find Withdrawals PDA for client one's USDC", async () => {
+    clientOneUsdcWithdrawals = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("withdrawals"),
+        fundlockAccount.toBuffer(),
+        clientOneUsdcBalance.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One's USDC Withdrawals:", clientOneUsdcWithdrawals.toString());
+  });
+
+  it(" Find Withdrawals PDA for client two's USDC", async () => {
+    clientTwoUsdcWithdrawals = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("withdrawals"),
+        fundlockAccount.toBuffer(),
+        clientTwoUsdcBalance.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client Two's USDC Withdrawals:", clientTwoUsdcWithdrawals.toString());
+  });
+
+  it("Find Withdrawals PDA for client three's USDC", async () => {
+    clientThreeUsdcWithdrawals = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("withdrawals"),
+        fundlockAccount.toBuffer(),
+        clientThreeUsdcBalance.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client Three's USDC Withdrawals:", clientThreeUsdcWithdrawals.toString());
   });
 
   it("Deposit USDC from client one to the Fundlock Account", async () => {
@@ -850,45 +890,6 @@ describe("ithaca-smart-contract-sol", () => {
     }
   });
 
-  it("Find Withdrawals PDA for client one's USDC", async () => {
-    clientOneUsdcWithdrawals = PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode("withdrawals"),
-        fundlockAccount.toBuffer(),
-        clientOneUsdcBalance.toBuffer(),
-      ],
-      program.programId
-    )[0];
-
-    console.log("Client One's USDC Withdrawals:", clientOneUsdcWithdrawals.toString());
-  });
-
-  it(" Find Withdrawals PDA for client two's USDC", async () => {
-    clientTwoUsdcWithdrawals = PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode("withdrawals"),
-        fundlockAccount.toBuffer(),
-        clientTwoUsdcBalance.toBuffer(),
-      ],
-      program.programId
-    )[0];
-
-    console.log("Client Two's USDC Withdrawals:", clientTwoUsdcWithdrawals.toString());
-  });
-
-  it("Find Withdrawals PDA for client three's USDC", async () => {
-    clientThreeUsdcWithdrawals = PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode("withdrawals"),
-        fundlockAccount.toBuffer(),
-        clientThreeUsdcBalance.toBuffer(),
-      ],
-      program.programId
-    )[0];
-
-    console.log("Client Three's USDC Withdrawals:", clientThreeUsdcWithdrawals.toString());
-  });
-
   it("Que a withdraw request of 1/5 of deposited amount client one", async () => {
     let withdrawUsdcTx = await program.methods.withdrawFundlock(amountToWithdrawClientOne).accountsPartial({
       accessController: accessControllerAccount,
@@ -947,6 +948,37 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedClientTwoUsdcWithdrawals.withdrawalQueue.length, 1, "Client Two's USDC Withdrawals Queue not updated");
 
     assert.equal(fetchedClientTwoUsdcWithdrawals.withdrawalQueue[0].amount.toString(), amountToWithdrawClientTwo.toString(), "Client Two's USDC Withdrawal index 0 Amount not updated");
+  });
+
+  it("queue a withdrawal request of full amount of deposited amount client three", async () => {
+    let fecthedClientThreeUsdcBalanceBefore = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    console.log("Client Three USDC Balance Before Withdrawal:", fecthedClientThreeUsdcBalanceBefore.amount.toString());
+    let withdrawUsdcTx = await program.methods.withdrawFundlock(amountToWithdrawClientThree).accountsPartial({
+      accessController: accessControllerAccount,
+      tokenValidator: tokenValidatorAccount,
+      role: roleAccountAdmin,
+      fundlock: fundlockAccount,
+      client: clientThree.publicKey,
+      clientAta: clientThreeUsdcAta.address,
+      token: usdcMint,
+      clientBalance: clientThreeUsdcBalance,
+      fundlockTokenVault: fundlockTokenVault,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      withdrawals: clientThreeUsdcWithdrawals
+    }).signers([clientThree]).rpc().then(confirmTx).then(log);
+
+    let fecthedClientThreeUsdcBalanceAfter = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    console.log("Client Three USDC Balance After Withdrawal:", fecthedClientThreeUsdcBalanceAfter.amount.toString());
+
+    fetchedClientThreeUsdcWithdrawals = await program.account.withdrawals.fetch(clientThreeUsdcWithdrawals);
+
+    assert.equal(fetchedClientThreeUsdcWithdrawals.activeWithdrawalsAmount.toString(), amountToWithdrawClientThree.toString(), "Client active withdrawals amount not updated");
+
+    assert.equal(fetchedClientThreeUsdcWithdrawals.withdrawalQueue.length, 1, "Client Three's USDC Withdrawals Queue not updated");
+
+    assert.equal(fetchedClientThreeUsdcWithdrawals.withdrawalQueue[0].amount.toString(), amountToWithdrawClientThree.toString(), "Client Three's USDC Withdrawal index 0 Amount not updated");
   });
 
   it("Queue 4 more withdraw requests of 1/5 of deposited amount to make sure the withdrawals account can hold all the states client one", async () => {
@@ -1030,9 +1062,88 @@ describe("ithaca-smart-contract-sol", () => {
     }
   });
 
+  it("updates the balances of client one, two and three", async () => {
+
+    let amountsToAdd = new anchor.BN(7000000);
+    let amountsToSubtract = new anchor.BN(-(amountToWithdrawClientTwo));
+
+    let amountToSubstractClientThree = new anchor.BN(-amountToWithdrawClientThree);
+
+    let backendId = new anchor.BN(15)
+    let amounts = [amountsToAdd, amountsToSubtract, amountToSubstractClientThree]
+    let tokens = [usdcMint, usdcMint, usdcMint]
+    let clientAtas = [clientOneUsdcAta.address, clientTwoUsdcAta.address, clientThreeUsdcAta.address]
+    let fecthedClientOneUsdcBalanceBefore = await program.account.clientBalance.fetch(clientOneUsdcBalance);
+    let fetchedClientTwoUsdcBalanceBefore = await program.account.clientBalance.fetch(clientTwoUsdcBalance);
+    let fetchedClientThreeUsdcBalanceBefore = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    let fetchedClientThreeUsdcWithdrawalsBefore = await program.account.withdrawals.fetch(clientThreeUsdcWithdrawals);
+
+    let clientOneUpdatedBalance = fecthedClientOneUsdcBalanceBefore.amount.add(amountsToAdd);
+    let clientTwoUpdatedBalance = fetchedClientTwoUsdcBalanceBefore.amount.sub(amountsToSubtract.abs());
+    let ClientThreeUpdatedWithdrawalBalance = fetchedClientThreeUsdcWithdrawalsBefore.activeWithdrawalsAmount.sub(amountToWithdrawClientThree);
+    let clientThreeUpdatedWithdrawalCount = fetchedClientThreeUsdcWithdrawalsBefore.withdrawalQueue.length - 1;
+    // Expect accounts to be passed in order of:
+    // 0.Client Balance in remaining accounts[0]    
+    // 1.Withdrawals associated with the client balance in remaining accounts[1]
+    // 2.Token Associated with the Client Balance in tokens[0]
+    // 3.Client ATA in clients_ata[0]
+    console.log("Client One's USDC Balance Before:", fecthedClientOneUsdcBalanceBefore.amount.toString());
+    console.log("Client Two's USDC Balance Before:", fetchedClientTwoUsdcBalanceBefore.amount.toString());
+
+    let updateBalancesTx = await program.methods.updateBalancesFundlock(amounts, tokens, clientAtas, backendId).accountsPartial({
+      caller: admin.publicKey,
+      accessController: accessControllerAccount,
+      role: roleAccountAdmin,
+      tokenValidator: tokenValidatorAccount,
+      systemProgram: SystemProgram.programId,
+    }).remainingAccounts([
+      { pubkey: clientOneUsdcBalance, isWritable: true, isSigner: false },
+      { pubkey: clientOneUsdcWithdrawals, isWritable: true, isSigner: false },
+      { pubkey: clientTwoUsdcBalance, isWritable: true, isSigner: false },
+      { pubkey: clientTwoUsdcWithdrawals, isWritable: true, isSigner: false },
+      { pubkey: clientThreeUsdcBalance, isWritable: true, isSigner: false },
+      { pubkey: clientThreeUsdcWithdrawals, isWritable: true, isSigner: false },
+    ]).signers([admin]).rpc().then(confirmTx).then(log);
+
+
+    // Expect the amount[0] to be added to the client balance of client one
+    let fecthedClientUsdcBalanceAfter = await program.account.clientBalance.fetch(clientOneUsdcBalance);
+    assert.equal(fecthedClientUsdcBalanceAfter.amount.toString(), clientOneUpdatedBalance.toString(), "Client One's USDC Balance not updated");
+    console.log("Client One's USDC Balance After:", fecthedClientUsdcBalanceAfter.amount.toString());
+    // Expect the amount[1] to be subtracted from the client balance of client two
+    let fetchedClientTwoUsdcBalanceAfter = await program.account.clientBalance.fetch(clientTwoUsdcBalance);
+    assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), clientTwoUpdatedBalance.toString(), "Client Two's USDC Balance not updated");
+    console.log("Client Two's USDC Balance After:", fetchedClientTwoUsdcBalanceAfter.amount.toString());
+    // Expect the amount[2] to be subtracted from the client three's withdrawal queue
+    let fetchedClientThreeUsdcBalanceAfter = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    assert.equal(fetchedClientThreeUsdcBalanceAfter.amount.toString(), fetchedClientThreeUsdcBalanceBefore.amount.toString(), "Client Three's USDC Balance updated");
+    let fetchedClientThreeUsdcWithdrawalsAfter = await program.account.withdrawals.fetch(clientThreeUsdcWithdrawals);
+    assert.equal(fetchedClientThreeUsdcWithdrawalsAfter.activeWithdrawalsAmount, ClientThreeUpdatedWithdrawalBalance.toString(), "Client Withdrawal Amount not updated");
+    assert.equal(fetchedClientThreeUsdcWithdrawalsAfter.withdrawalQueue.length, clientThreeUpdatedWithdrawalCount, "Client Withdrawal Queue not updated");
+    console.log("Client Three's USDC Withdrawal Balance After:", fetchedClientThreeUsdcWithdrawalsAfter.activeWithdrawalsAmount.toString());
+    console.log("Client Three's USDC Withdrawal Queue Length After:", fetchedClientThreeUsdcWithdrawalsAfter.withdrawalQueue.length);
+  });
+
+  it("Should print the balance sheet", async () => {
+    let balanceSheet = await program.methods.balanceSheetFundlock().accountsPartial({
+      caller: payer.publicKey,
+      client: clientOne.publicKey,
+      accessController: accessControllerAccount,
+      role: roleAccountAdmin,
+      token: usdcMint,
+      fundlock: fundlockAccount,
+      fundlockTokenVault: fundlockTokenVault,
+      clientAta: clientOneUsdcAta.address,
+      clientBalance: clientOneUsdcBalance,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      tokenValidator: tokenValidatorAccount,
+      systemProgram: SystemProgram.programId,
+    }).signers([payer]).rpc().then(log);
+  });
+
+
   it("Try to release the first withdraw request while release lock is active (should fail)", async () => {
     let index = new anchor.BN(0);
-
 
     try {
       let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
@@ -1061,110 +1172,45 @@ describe("ithaca-smart-contract-sol", () => {
     console.log(await printTimestamp(provider));
   });
 
-  // it("Wait for 2 minutes to pass", async () => {
-  //   await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 2))
-  //   console.log("WAIT", await printTimestamp(provider));
+  it("Release the first withdraw request after release lock passes", async () => {
+    // wait for 30 seconds
+    await new Promise(resolve => setTimeout(resolve, 1000 * 30 * 1))
+    console.log("WAIT", await printTimestamp(provider));
 
-  // });
+    let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
+    let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+    let index = new anchor.BN(0);
+    let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
 
-  // it("Release the first withdraw request after release lock passes", async () => {
-  //   let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
-  //   let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
-  //   let index = new anchor.BN(0);
-  //   let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
-
-  //   let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
-  //     accessController: accessControllerAccount,
-  //     tokenValidator: tokenValidatorAccount,
-  //     role: roleAccountAdmin,
-  //     fundlock: fundlockAccount,
-  //     client: clientOne.publicKey,
-  //     clientAta: clientOneUsdcAta.address,
-  //     token: usdcMint,
-  //     clientBalance: clientOneUsdcBalance,
-  //     fundlockTokenVault: fundlockTokenVault,
-  //     systemProgram: SystemProgram.programId,
-  //     tokenProgram: TOKEN_PROGRAM_ID,
-  //     whitelistedToken: whitelistedUsdcTokenAccount,
-  //     withdrawals: clientOneUsdcWithdrawals
-  //   }).signers([clientOne]).rpc().then(confirmTx).then(log);
-
-  //   let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
-
-  //   let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
-
-  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
-
-  //   assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
-
-  //   let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientOne);
-
-  //   assert.equal(await getTokenAccountBalance(provider.connection, fundlockTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
-
-  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
-  // });
-
-  it("updates the balances of client one and two by adding 7000000", async () => {
-    let amountsToAdd = new anchor.BN(7000000);
-    // let amountsToSubtract = new anchor.BN(-(amountToDepositClientTwo.add(new anchor.BN(1000000))));
-    let amountsToSubtract = new anchor.BN(-(amountToWithdrawClientTwo));
-
-    let backendId = new anchor.BN(15)
-    let amounts = [amountsToAdd, amountsToSubtract]
-    let tokens = [usdcMint, usdcMint]
-    let clientAtas = [clientOneUsdcAta.address, clientTwoUsdcAta.address]
-    let fecthedClientOneUsdcBalanceBefore = await program.account.clientBalance.fetch(clientOneUsdcBalance);
-    let fetchedClientTwoUsdcBalanceBefore = await program.account.clientBalance.fetch(clientTwoUsdcBalance);
-
-    let clientOneUpdatedBalance = fecthedClientOneUsdcBalanceBefore.amount.add(amountsToAdd);
-    let clientTwoUpdatedBalance = fetchedClientTwoUsdcBalanceBefore.amount.sub(amountsToSubtract.abs());
-    // Expect accounts to be passed in order of:
-    // 0.Client Balance in remaining accounts[0]    
-    // 1.Withdrawals associated with the client balance in remaining accounts[1]
-    // 2.Token Associated with the Client Balance in tokens[0]
-    // 3.Client ATA in clients_ata[0]
-    console.log("Client Two's USDC Balance Before:", fetchedClientTwoUsdcBalanceBefore.amount.toString());
-
-
-    let updateBalancesTx = await program.methods.updateBalancesFundlock(amounts, tokens, clientAtas, backendId).accountsPartial({
-      caller: admin.publicKey,
+    let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
       accessController: accessControllerAccount,
-      role: roleAccountAdmin,
       tokenValidator: tokenValidatorAccount,
-      systemProgram: SystemProgram.programId,
-    }).remainingAccounts([
-      { pubkey: clientOneUsdcBalance, isWritable: true, isSigner: false },
-      { pubkey: clientOneUsdcWithdrawals, isWritable: true, isSigner: false },
-      { pubkey: clientTwoUsdcBalance, isWritable: true, isSigner: false },
-      { pubkey: clientTwoUsdcWithdrawals, isWritable: true, isSigner: false },
-
-    ]).signers([admin]).rpc().then(confirmTx).then(log);
-
-
-    // Expect the amount to be added to the client balance of client one
-    let fecthedClientUsdcBalanceAfter = await program.account.clientBalance.fetch(clientOneUsdcBalance);
-    assert.equal(fecthedClientUsdcBalanceAfter.amount.toString(), clientOneUpdatedBalance.toString(), "Client One's USDC Balance not updated");
-    // Expect the amount to be subtracted from the client balance of client two
-    let fetchedClientTwoUsdcBalanceAfter = await program.account.clientBalance.fetch(clientTwoUsdcBalance);
-    assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), clientTwoUpdatedBalance.toString(), "Client Two's USDC Balance not updated");
-    console.log("Client Two's USDC Balance After:", fetchedClientTwoUsdcBalanceAfter.amount.toString());
-  });
-
-  it("Should print the balance sheet", async () => {
-    let balanceSheet = await program.methods.balanceSheetFundlock().accountsPartial({
-      caller: payer.publicKey,
-      client: clientOne.publicKey,
-      accessController: accessControllerAccount,
       role: roleAccountAdmin,
-      token: usdcMint,
       fundlock: fundlockAccount,
-      fundlockTokenVault: fundlockTokenVault,
+      client: clientOne.publicKey,
       clientAta: clientOneUsdcAta.address,
+      token: usdcMint,
       clientBalance: clientOneUsdcBalance,
-      whitelistedToken: whitelistedUsdcTokenAccount,
-      tokenValidator: tokenValidatorAccount,
+      fundlockTokenVault: fundlockTokenVault,
       systemProgram: SystemProgram.programId,
-    }).signers([payer]).rpc().then(log);
-  });
+      tokenProgram: TOKEN_PROGRAM_ID,
+      whitelistedToken: whitelistedUsdcTokenAccount,
+      withdrawals: clientOneUsdcWithdrawals
+    }).signers([clientOne]).rpc().then(confirmTx).then(log);
 
+    let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+    let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
+
+    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
+
+    assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
+
+    let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientTwo).add(amountToDepositClientThree);
+
+    assert.equal(await getTokenAccountBalance(provider.connection, fundlockTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
+
+    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
+
+  });
 });
