@@ -124,4 +124,8 @@ pub mod ithaca_smart_contract_sol {
     pub fn balance_sheet_fundlock(ctx: Context<BalanceSheetFundlock>) -> Result<()> {
         ctx.accounts.balance_sheet_fundlock()
     }
+
+    pub fn init_ledger(ctx: Context<InitLedger>) -> Result<()> {
+        ctx.accounts.init_ledger(&ctx.bumps)
+    }
 }

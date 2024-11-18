@@ -198,6 +198,8 @@ describe("ithaca-smart-contract-sol", () => {
   let memberAccountMockUtilityAccount: PublicKey;
   let fetchedMemberAccountMockUtilityAccount;
 
+  let usdcWSolLedger: PublicKey;
+
 
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
@@ -1543,4 +1545,45 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
 
   });
+
+  it("Find PDA for USDC and SOL Ledger Market", async () => {
+    usdcWSolLedger = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("ledger"),
+        accessControllerAccount.toBuffer(),
+        tokenValidatorAccount.toBuffer(),
+        nativeMint.toBuffer(),
+        usdcMint.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("USDC-wSOL Ledger Market:", usdcWSolLedger.toString());
+  });
+
+  it("Create a usdc and wrapped sol ledger market", async () => {
+    let initLedger = await program.methods.initLedger().accountsPartial({
+      admin: admin.publicKey,
+      accessController: accessControllerAccount,
+      role: roleAccountAdmin,
+      member: memberAccountAdmin,
+      tokenValidator: tokenValidatorAccount,
+      fundlock: fundlockAccount,
+      underlyingToken: nativeMint,
+      strikeToken: usdcMint,
+      whitelistedUnderlyingToken: whitelistedNativeTokenAccount,
+      whitelistedStrikeToken: whitelistedUsdcTokenAccount,
+      ledger: usdcWSolLedger,
+      systemProgram: SystemProgram.programId,
+    }).signers([admin]).rpc().then(confirmTx).then(log);
+
+    let fetchedLedger = await program.account.ledger.fetch(usdcWSolLedger);
+    assert.equal(fetchedLedger.underlyingToken.toString(), nativeMint.toString(), "Underlying Token not set");
+    assert.equal(fetchedLedger.strikeToken.toString(), usdcMint.toString(), "Strike Token not set");
+    assert.equal(fetchedLedger.accessController.toString(), accessControllerAccount.toString(), "Access Controller not set");
+    assert.equal(fetchedLedger.tokenValidator.toString(), tokenValidatorAccount.toString(), "Token Validator not set");
+    console.log("Ledger Market Initialized:", fetchedLedger.toString());
+    console.log("Underlying Multiplier:", fetchedLedger.underlyingMultiplier.toString());
+    console.log("Strike Multiplier:", fetchedLedger.strikeMultiplier.toString());
+  })
 });
