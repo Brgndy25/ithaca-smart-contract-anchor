@@ -99,6 +99,7 @@ impl<'info> DepositFundlock<'info> {
         });
 
         self.withdrawals.bump = bumps.withdrawals;
+        self.withdrawals.client_ata = self.client_ata.key();
 
         Ok(())
     }

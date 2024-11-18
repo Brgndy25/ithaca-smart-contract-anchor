@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("DDR8cZjBWm42Js91RKoYq95f243N7i5PcAwB9X4gUvjM");
+declare_id!("8VhqqahqVeiByDsa6FKo6Lmx94o4MTtQEBRruuAsbrSp");
 
 #[program]
 pub mod ithaca_smart_contract_sol {
@@ -50,8 +50,12 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts.init_token_validator(&ctx.bumps)
     }
 
-    pub fn add_token_to_whitelist(ctx: Context<AddTokenToWhitelist>) -> Result<()> {
-        ctx.accounts.add_token_to_whitelist(&ctx.bumps)
+    pub fn add_token_to_whitelist(
+        ctx: Context<AddTokenToWhitelist>,
+        token_precision: u8,
+    ) -> Result<()> {
+        ctx.accounts
+            .add_token_to_whitelist(&ctx.bumps, token_precision)
     }
 
     pub fn remove_token_from_whitelist(ctx: Context<RemoveTokenFromWhitelist>) -> Result<()> {
@@ -84,6 +88,8 @@ pub mod ithaca_smart_contract_sol {
     // 1.Withdrawals associated with the client balance in remaining accounts[1]
     // 2.Token Associated with the Client Balance in tokens[0]
     // 3.Client ATA in clients_ata[0]
+
+    /// TODO! Move update balance fundlock as an in internal ledger only function
 
     pub fn update_balances_fundlock(
         ctx: Context<UpdateBalancesFundlock>,

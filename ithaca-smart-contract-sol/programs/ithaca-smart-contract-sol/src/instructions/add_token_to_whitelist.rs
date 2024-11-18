@@ -47,7 +47,11 @@ pub struct AddTokenToWhitelist<'info> {
 impl<'info> AddTokenToWhitelist<'info> {
     // will init the whitelisted token account which we will use to check if the token
     // has been whitelisted
-    pub fn add_token_to_whitelist(&mut self, bumps: &AddTokenToWhitelistBumps) -> Result<()> {
+    pub fn add_token_to_whitelist(
+        &mut self,
+        bumps: &AddTokenToWhitelistBumps,
+        token_precision: u8,
+    ) -> Result<()> {
         require!(
             self.role.role == Roles::Admin.as_str(),
             AccessControlError::UnauthorizedAdmin
@@ -55,6 +59,7 @@ impl<'info> AddTokenToWhitelist<'info> {
         self.whitelisted_token.set_inner(WhitelistedToken {
             token_mint: self.new_token_to_whitelist.key(),
             token_decimals: self.new_token_to_whitelist.decimals,
+            token_precision,
             bump: bumps.whitelisted_token,
         });
 
