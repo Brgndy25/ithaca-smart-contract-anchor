@@ -15,6 +15,7 @@ pub struct Fundlock {
 pub struct ClientBalance {
     pub amount: u64,
     pub token: Pubkey,
+    pub client: Pubkey,
     pub client_ata: Pubkey,
     pub bump: u8,
 }
@@ -46,6 +47,7 @@ impl Space for ClientBalance {
     const INIT_SPACE: usize = 8 + // account discriminator
     8 + // amount
     32 + // token pubkey
+    32 + // client pubkey
     32 + // client ata pubkey
     1; // bump
 }

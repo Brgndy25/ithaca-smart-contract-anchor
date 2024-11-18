@@ -91,6 +91,7 @@ impl<'info> WithdrawFundlock<'info> {
         self.client_balance.set_inner(ClientBalance {
             amount: self.client_balance.amount - amount,
             token: self.token.key(),
+            client: self.client.key(),
             client_ata: self.client_ata.key(),
             bump: self.client_balance.bump,
         });
