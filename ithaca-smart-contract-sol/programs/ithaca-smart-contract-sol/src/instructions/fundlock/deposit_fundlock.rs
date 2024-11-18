@@ -94,7 +94,7 @@ impl<'info> DepositFundlock<'info> {
         self.client_balance.set_inner(ClientBalance {
             amount: self.client_balance.amount + amount,
             token: self.token.key(),
-            client_ata: self.client.key(),
+            client: self.client.key(),
             client_ata: self.client_ata.key(),
             bump: bumps.client_balance,
         });
