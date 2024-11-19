@@ -1,6 +1,6 @@
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{Roles, TokenValidator};
+use crate::{Member, Roles, TokenValidator};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -18,7 +18,12 @@ pub struct InitFundlock<'info> {
     )]
     pub role: Account<'info, Role>,
     #[account(
-        seeds = [b"token_validator".as_ref(), role.key().as_ref()],
+        seeds = [b"member".as_ref(), role.key().as_ref(), caller.key().as_ref()],
+        bump = member.bump
+    )]
+    pub member: Account<'info, Member>,
+    #[account(
+        seeds = [b"token_validator".as_ref(), access_controller.key().as_ref()],
         bump = token_validator.bump
     )]
     pub token_validator: Account<'info, TokenValidator>,

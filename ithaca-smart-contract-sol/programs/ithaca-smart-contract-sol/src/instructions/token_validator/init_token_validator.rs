@@ -26,7 +26,7 @@ pub struct InitTokenValidator<'info> {
     #[account(
         init,
         payer = admin,
-        seeds = [b"token_validator".as_ref(), role.key().as_ref()],
+        seeds = [b"token_validator".as_ref(), access_controller.key().as_ref()],
         space = TokenValidator::INIT_SPACE,
         bump
     )]

@@ -290,17 +290,17 @@ pub struct CreateOrUpdatePositions<'info> {
     )]
     pub access_controller: Box<Account<'info, AccessController>>,
     #[account(
-        seeds = [b"role", access_controller.key().as_ref(), Roles::Admin.as_str().as_bytes()],
-        bump = role.bump
+        seeds = [b"role", access_controller.key().as_ref(), Roles::UtilityAccount.as_str().as_bytes()],
+        bump = role_util.bump
     )]
-    pub role: Box<Account<'info, Role>>,
+    pub role_util: Box<Account<'info, Role>>,
     #[account(
-        seeds = [b"member", role.key().as_ref(), caller.key().as_ref()],
-        bump = member.bump
+        seeds = [b"member", role_util.key().as_ref(), caller.key().as_ref()],
+        bump = member_util.bump
     )]
-    pub member: Box<Account<'info, Member>>,
+    pub member_util: Box<Account<'info, Member>>,
     #[account(
-        seeds = [b"token_validator", role.key().as_ref()],
+        seeds = [b"token_validator", access_controller.key().as_ref()],
         bump = token_validator.bump
     )]
     pub token_validator: Box<Account<'info, TokenValidator>>,

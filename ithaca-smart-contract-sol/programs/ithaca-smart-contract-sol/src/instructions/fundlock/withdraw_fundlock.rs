@@ -18,12 +18,7 @@ pub struct WithdrawFundlock<'info> {
     )]
     pub access_controller: Box<Account<'info, AccessController>>,
     #[account(
-        seeds = [b"role".as_ref(), access_controller.key().as_ref(), Roles::Admin.as_str().as_bytes()],
-        bump = role.bump
-    )]
-    pub role: Box<Account<'info, Role>>,
-    #[account(
-        seeds = [b"token_validator".as_ref(), role.key().as_ref()],
+        seeds = [b"token_validator".as_ref(), access_controller.key().as_ref()],
         bump = token_validator.bump
     )]
     pub token_validator: Box<Account<'info, TokenValidator>>,
