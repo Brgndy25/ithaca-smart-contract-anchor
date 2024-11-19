@@ -37,5 +37,15 @@ pub enum FundlockError {
     #[msg("Invalid amount of accounts provided")]
     InvalidAccountsAmount,
     #[msg("Account order for update balances violated")]
-    AccountOrderViolated
+    AccountOrderViolated,
+}
+
+#[error_code]
+pub enum LedgerError {
+    #[msg("The provided positions array is empty")]
+    EmptyPoistionsArray,
+    #[msg("The provided contract id doesnt match the existing one")]
+    InvalidContractId,
+    #[msg("The provided account order is violated")]
+    AccountOrderViolated,
 }

@@ -1,7 +1,7 @@
 use crate::error::FundlockError;
 use crate::state::access_controller_state::{AccessController, Role};
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalance, Ledger, Roles, TokenValidator, Withdrawals, ALLOWED_WITHDRAWAL_LIMIT};
+use crate::{ClientBalance, Roles, TokenValidator, Withdrawals, ALLOWED_WITHDRAWAL_LIMIT};
 use anchor_lang::prelude::*;
 use std::cell::RefMut;
 
@@ -64,7 +64,7 @@ impl<'info> UpdateBalancesFundlock<'info> {
 
                 let withdrawals_data = &mut withdrawals_account_datas[i];
 
-                let mut withdrawals_account_info =
+                let withdrawals_account_info =
                     Withdrawals::try_deserialize(&mut withdrawals_data.as_ref())
                         .expect("Error Deserializing Withdrawals");
 
