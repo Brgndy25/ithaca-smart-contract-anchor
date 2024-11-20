@@ -30,7 +30,7 @@ pub struct WithdrawalState {
 pub struct Withdrawals {
     pub withdrawal_queue: Vec<WithdrawalState>,
     pub active_withdrawals_amount: u64,
-    pub client_ata: Pubkey,
+    pub client: Pubkey,
     pub bump: u8,
 }
 

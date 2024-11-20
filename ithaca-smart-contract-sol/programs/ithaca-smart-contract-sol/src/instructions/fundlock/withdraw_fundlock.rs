@@ -1,8 +1,8 @@
 use crate::error::{FundlockError, TokenValidatorError};
-use crate::state::access_controller_state::{AccessController, Role};
+use crate::state::access_controller_state::AccessController;
 use crate::state::fundlock_state::Fundlock;
 use crate::{
-    ClientBalance, Roles, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals,
+    ClientBalance, TokenValidator, WhitelistedToken, WithdrawalState, Withdrawals,
     ALLOWED_WITHDRAWAL_LIMIT,
 };
 use anchor_lang::prelude::*;
@@ -92,7 +92,7 @@ impl<'info> WithdrawFundlock<'info> {
         });
 
         self.withdrawals.active_withdrawals_amount += amount;
-        self.withdrawals.client_ata = self.client_ata.key();
+        self.withdrawals.client = self.client.key();
         // self.withdrawals.bump = bumps.withdrawals;
 
         let index = self.withdrawals.withdrawal_queue.len() - 1;

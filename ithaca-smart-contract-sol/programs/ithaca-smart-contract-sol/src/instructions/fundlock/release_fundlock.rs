@@ -1,7 +1,7 @@
 use crate::error::{FundlockError, TokenValidatorError};
-use crate::state::access_controller_state::{AccessController, Role};
+use crate::state::access_controller_state::AccessController;
 use crate::state::fundlock_state::Fundlock;
-use crate::{ClientBalance, Roles, TokenValidator, WhitelistedToken, Withdrawals};
+use crate::{ClientBalance, TokenValidator, WhitelistedToken, Withdrawals};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 

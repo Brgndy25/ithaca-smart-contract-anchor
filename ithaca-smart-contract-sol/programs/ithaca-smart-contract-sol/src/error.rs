@@ -48,4 +48,9 @@ pub enum LedgerError {
     InvalidContractId,
     #[msg("The provided account order is violated")]
     AccountOrderViolated,
+    #[msg("The provided fund movement array is empty")]
+    EmptyFundMovementArray,
+    #[msg("The provided amounts array is too empty")]
+    EmptyAmountsArray,
+
 }

@@ -87,44 +87,6 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts.release_fundlock(index)
     }
 
-    // Expect accounts to be passed in order of:
-    // 0.Client Balance in remaining accounts[0]
-    // 1.Withdrawals associated with the client balance in remaining accounts[1]
-    // 2.Token Associated with the Client Balance in tokens[0]
-    // 3.Client ATA in clients_ata[0]
-
-    /// TODO! Move update balance fundlock as an in internal ledger only function
-
-    pub fn update_balances_fundlock(
-        ctx: Context<UpdateBalancesFundlock>,
-        amounts: Vec<i64>,
-        tokens: Vec<Pubkey>,
-        clients_ata: Vec<Pubkey>,
-        backend_id: u64,
-    ) -> Result<()> {
-        let mut client_balance_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
-        let mut withdrawals_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
-        let remaining_accounts = &ctx.remaining_accounts;
-        for i in (0..remaining_accounts.len()).step_by(2) {
-            let client_data = remaining_accounts[i]
-                .try_borrow_mut_data()
-                .expect("Error borrowing data");
-            client_balance_account_datas.push(client_data);
-            let withdrawal_data = remaining_accounts[i + 1]
-                .try_borrow_mut_data()
-                .expect("Error borrowing data");
-            withdrawals_account_datas.push(withdrawal_data);
-        }
-        ctx.accounts.update_balances_fundlock(
-            amounts,
-            clients_ata,
-            tokens,
-            client_balance_account_datas,
-            withdrawals_account_datas,
-            backend_id,
-        )
-    }
-
     pub fn balance_sheet_fundlock(ctx: Context<BalanceSheetFundlock>) -> Result<()> {
         ctx.accounts.balance_sheet_fundlock()
     }
@@ -277,6 +239,56 @@ pub mod ithaca_smart_contract_sol {
         }
 
         Ok(())
+    }
+
+    // Expect accounts to be passed in order of:
+    // 0.Client Underlying Balance in remaining accounts[0]
+    // 1.Client Strike Balance in remaining accounts[1]
+    // 2.Withdrawals associated with the client underlying balance in remaining accounts[2]
+    // 3.Withdrawals associated with the client strike balance in remaining accounts[3]
+    // 4.Client PK in FundMovementParam[0].client
+    // 5.Underlying amount in FundMovementParam[0].underlying_amount
+    // 6.Strike amount in FundMovementParam[0].strike_amount
+
+    pub fn update_fund_movements(
+        ctx: Context<UpdateFundMovements>,
+        fund_movements: Vec<FundMovementParam>,
+        backend_id: u64,
+    ) -> Result<()> {
+        let mut client_balance_underlying_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let mut client_balance_strike_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let mut withdrawals_underlying_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let mut withdrawals_strike_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
+        let remaining_accounts = &ctx.remaining_accounts;
+        for i in 0..fund_movements.len() {
+            let client_balance_underlying_data = remaining_accounts[i * 4]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            client_balance_underlying_account_datas.push(client_balance_underlying_data);
+
+            let client_balance_strike_data = remaining_accounts[i * 4 + 1]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            client_balance_strike_account_datas.push(client_balance_strike_data);
+
+            let withdrawals_underlying_data = remaining_accounts[i * 4 + 2]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            withdrawals_underlying_account_datas.push(withdrawals_underlying_data);
+
+            let withdrawals_strike_data = remaining_accounts[i * 4 + 3]
+                .try_borrow_mut_data()
+                .expect("Error borrowing data");
+            withdrawals_strike_account_datas.push(withdrawals_strike_data);
+        }
+        ctx.accounts.update_fund_movements(
+            fund_movements,
+            client_balance_underlying_account_datas,
+            withdrawals_underlying_account_datas,
+            client_balance_strike_account_datas,
+            withdrawals_strike_account_datas,
+            backend_id,
+        )
     }
 }
 
