@@ -91,6 +91,10 @@ impl<'info> InitLedger<'info> {
             strike_multiplier,
             bump: bumps.ledger,
         });
+
+        msg!("Ledger initialized successfully at {}", self.ledger.key());
+        msg!("Underlying Token: {}, Strike token: {}", self.underlying_token.key(), self.strike_token.key());
+
         Ok(())
     }
 }

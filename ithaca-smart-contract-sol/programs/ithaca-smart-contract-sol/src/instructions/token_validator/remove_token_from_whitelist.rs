@@ -46,6 +46,10 @@ pub struct RemoveTokenFromWhitelist<'info> {
 
 impl<'info> RemoveTokenFromWhitelist<'info> {
     pub fn remove_token_from_whitelist(&mut self) -> Result<()> {
+        msg!(
+            "Token {} removed from whitelist",
+            self.token_to_remove.key()
+        );
         Ok(())
     }
 }

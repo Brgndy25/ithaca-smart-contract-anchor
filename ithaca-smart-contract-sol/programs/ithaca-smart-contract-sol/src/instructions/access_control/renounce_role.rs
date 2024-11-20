@@ -5,6 +5,7 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 #[instruction(_role_renounced: String, _member_pk: Pubkey)]
 pub struct RenounceRole<'info> {
+    // Roles can be renounced my the main access controller admin only
     #[account(mut,
     constraint = admin.key() == access_controller.admin @ AccessControlError::UnauthorizedAdmin)]
     pub admin: Signer<'info>,

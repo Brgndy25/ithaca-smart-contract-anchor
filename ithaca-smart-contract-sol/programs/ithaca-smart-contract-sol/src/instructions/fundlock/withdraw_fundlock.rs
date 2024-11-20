@@ -98,7 +98,7 @@ impl<'info> WithdrawFundlock<'info> {
         let index = self.withdrawals.withdrawal_queue.len() - 1;
 
         // Log the index of the new element
-        msg!("New withdrawal added at index: {}", index);
+        msg!("New withdrawal of {} added at index: {}", amount, index);
 
         //log the active withdrawal amoun
         msg!(

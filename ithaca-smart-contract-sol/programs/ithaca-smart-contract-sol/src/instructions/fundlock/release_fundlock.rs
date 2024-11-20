@@ -110,6 +110,12 @@ impl<'info> ReleaseFundlock<'info> {
         self.withdrawals.withdrawal_queue.remove(index as usize);
         self.withdrawals.active_withdrawals_amount -= amount_released;
 
+        msg!(
+            "Client: {} released {} tokens from the fundlock",
+            self.client.key(),
+            amount_released
+        );
+
         // Log the current active withdrawals amount
         msg!(
             "Current client's active withdrawals amount: {}",

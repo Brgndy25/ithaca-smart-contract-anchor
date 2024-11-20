@@ -1,6 +1,6 @@
-use crate::state::access_controller_state::{AccessController, Role};
+use crate::state::access_controller_state::Role;
 use crate::state::fundlock_state::Fundlock;
-use crate::{Member, Roles, TokenValidator};
+use crate::{AccessController, Member, Roles, TokenValidator};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -12,6 +12,7 @@ pub struct InitFundlock<'info> {
         bump = access_controller.bump,
     )]
     pub access_controller: Account<'info, AccessController>,
+    // Fundlock can be initialized only by the admin role member
     #[account(
         seeds = [b"role".as_ref(), access_controller.key().as_ref(), Roles::Admin.as_str().as_bytes()],
         bump = role.bump
@@ -52,8 +53,7 @@ impl<'info> InitFundlock<'info> {
             release_lock,
             bump: bumps.fundlock,
         });
-
-        msg!("Fundlock initialized successfully");
+        msg!("Fundlock initialized successfully at {}", self.fundlock.key());
         Ok(())
     }
 }

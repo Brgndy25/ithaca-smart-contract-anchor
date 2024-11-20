@@ -97,6 +97,12 @@ impl<'info> DepositFundlock<'info> {
         self.withdrawals.bump = bumps.withdrawals;
         self.withdrawals.client = self.client.key();
 
+        msg!(
+            "Client: {} deposited {} tokens into the fundlock",
+            self.client.key(),
+            amount
+        );
+
         Ok(())
     }
 }

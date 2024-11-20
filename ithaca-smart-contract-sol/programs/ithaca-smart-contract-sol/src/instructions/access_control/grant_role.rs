@@ -6,7 +6,9 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 #[instruction(role_granted: String, new_member: Pubkey)]
 pub struct GrantRole<'info> {
-    #[account(mut)]
+    // Roles can be granted my the main access controller admin only
+    #[account(mut,
+        constraint = admin.key() == access_controller.admin @ AccessControlError::UnauthorizedAdmin)]
     pub admin: Signer<'info>,
     #[account(
         seeds = [b"access_controller".as_ref(), access_controller.admin.as_ref()],
