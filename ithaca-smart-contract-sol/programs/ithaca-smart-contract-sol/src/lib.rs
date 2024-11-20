@@ -241,14 +241,14 @@ pub mod ithaca_smart_contract_sol {
         Ok(())
     }
 
-    // Expect accounts to be passed in order of:
-    // 0.Client Underlying Balance in remaining accounts[0]
-    // 1.Client Strike Balance in remaining accounts[1]
-    // 2.Withdrawals associated with the client underlying balance in remaining accounts[2]
-    // 3.Withdrawals associated with the client strike balance in remaining accounts[3]
-    // 4.Client PK in FundMovementParam[0].client
-    // 5.Underlying amount in FundMovementParam[0].underlying_amount
-    // 6.Strike amount in FundMovementParam[0].strike_amount
+    /// Expect accounts to be passed in order of:
+    /// 0.Client Underlying Balance in remaining accounts[0]
+    /// 1.Client Strike Balance in remaining accounts[1]
+    /// 2.Withdrawals associated with the client underlying balance in remaining accounts[2]
+    /// 3.Withdrawals associated with the client strike balance in remaining accounts[3]
+    /// 4.Client PK in FundMovementParam[0].client
+    /// 5.Underlying amount in FundMovementParam[0].underlying_amount
+    /// 6.Strike amount in FundMovementParam[0].strike_amount
 
     pub fn update_fund_movements(
         ctx: Context<UpdateFundMovements>,
