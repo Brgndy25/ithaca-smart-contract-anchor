@@ -294,7 +294,8 @@ pub mod ithaca_smart_contract_sol {
         )
     }
 
-    pub fn dummy_for_idl(ctx: Context<DummyContextForIdl>) -> Result<()> {
+    //This is a dummy function to make sure we can fetch account data and have them in IDL
+    pub fn dummy_for_idl(_ctx: Context<DummyContextForIdl>) -> Result<()> {
         Ok(())
     }
 }
