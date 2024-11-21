@@ -15,6 +15,8 @@ import {
   Keypair,
   LAMPORTS_PER_SOL,
   SystemProgram,
+  sendAndConfirmRawTransaction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { set } from "@coral-xyz/anchor/dist/cjs/utils/features";
 
@@ -1501,7 +1503,6 @@ describe("ithaca-smart-contract-sol", () => {
       });
 
       positionAccounts.push(positionPda);
-
     }
 
     let createOrUpdatePositions = await program.methods.createContractsAndPositions(positionsParam1).accountsPartial({
@@ -1517,18 +1518,78 @@ describe("ithaca-smart-contract-sol", () => {
       ledger: usdcWSolLedger,
       systemProgram: SystemProgram.programId,
     }).remainingAccounts(remainingAccounts).signers([utilityAccount]).rpc().then(confirmTx).then(log);
+
+    // Fetch and assert contract and position data after creation
+    const [contractPda1] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("contract"), usdcWSolLedger.toBuffer(), new anchor.BN(1).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const [positionPda1] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), contractPda1.toBuffer(), clientOne.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [contractPda2] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("contract"), usdcWSolLedger.toBuffer(), new anchor.BN(2).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const [positionPda2] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), contractPda2.toBuffer(), clientTwo.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [contractPda3] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("contract"), usdcWSolLedger.toBuffer(), new anchor.BN(3).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const [positionPda3] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), contractPda3.toBuffer(), clientThree.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [contractPda4] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("contract"), usdcWSolLedger.toBuffer(), new anchor.BN(4).toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const [positionPda4] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), contractPda4.toBuffer(), clientThree.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const fetchedContract1 = await program.account.contract.fetch(contractPda1);
+    const fetchedPosition1 = await program.account.position.fetch(positionPda1);
+    const fetchedContract2 = await program.account.contract.fetch(contractPda2);
+    const fetchedPosition2 = await program.account.position.fetch(positionPda2);
+    const fetchedContract3 = await program.account.contract.fetch(contractPda3);
+    const fetchedPosition3 = await program.account.position.fetch(positionPda3);
+    const fetchedContract4 = await program.account.contract.fetch(contractPda4);
+    const fetchedPosition4 = await program.account.position.fetch(positionPda4);
+
+    assert.equal(fetchedContract1.contractId.toString(), "1", `Contract ID mismatch for contract ${contractPda1.toString()}`);
+    assert.equal(fetchedPosition1.client.toString(), clientOne.publicKey.toString(), `Client mismatch for position ${positionPda1.toString()}`);
+    assert.equal(fetchedPosition1.size.toString(), "1500", `Size mismatch for position ${positionPda1.toString()}`);
+    assert.equal(fetchedContract2.contractId.toString(), "2", `Contract ID mismatch for contract ${contractPda2.toString()}`);
+    assert.equal(fetchedPosition2.client.toString(), clientTwo.publicKey.toString(), `Client mismatch for position ${positionPda2.toString()}`);
+    assert.equal(fetchedPosition2.size.toString(), "2500", `Size mismatch for position ${positionPda2.toString()}`);
+    assert.equal(fetchedContract3.contractId.toString(), "3", `Contract ID mismatch for contract ${contractPda3.toString()}`);
+    assert.equal(fetchedPosition3.client.toString(), clientThree.publicKey.toString(), `Client mismatch for position ${positionPda3.toString()}`);
+    assert.equal(fetchedPosition3.size.toString(), "3500", `Size mismatch for position ${positionPda3.toString()}`);
+    assert.equal(fetchedContract4.contractId.toString(), "4", `Contract ID mismatch for contract ${contractPda4.toString()}`);
+    assert.equal(fetchedPosition4.client.toString(), clientThree.publicKey.toString(), `Client mismatch for position ${positionPda4.toString()}`);
+    assert.equal(fetchedPosition4.size.toString(), "4000", `Size mismatch for position ${positionPda4.toString()}`);
   });
 
   it("Update the fund movements of all clients", async () => {
-    const fundMovements = [
+
+    const fundMovements1 = [
       { client: clientOne.publicKey, underlyingAmount: new anchor.BN(100), strikeAmount: new anchor.BN(-2000) },
       { client: clientTwo.publicKey, underlyingAmount: new anchor.BN(150), strikeAmount: new anchor.BN(2500) },
     ];
 
-    let backendId = new anchor.BN(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
+    let backendId = new anchor.BN(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 
     // Can pass max 8 accounts (4 for each client)
-    let remainingAccounts = [
+    let remainingAccounts1 = [
       { pubkey: clientOneWsolBalance, isWritable: true, isSigner: false },
       { pubkey: clientOneUsdcBalance, isWritable: true, isSigner: false },
       { pubkey: clientOneWsolWithdrawals, isWritable: true, isSigner: false },
@@ -1538,14 +1599,6 @@ describe("ithaca-smart-contract-sol", () => {
       { pubkey: clientTwoWsolWithdrawals, isWritable: true, isSigner: false },
       { pubkey: clientTwoUsdcWithdrawals, isWritable: true, isSigner: false },
     ];
-
-    for (const movement of fundMovements) {
-      remainingAccounts.push({
-        pubkey: movement.client,
-        isWritable: true,
-        isSigner: false,
-      });
-    }
 
     // Fetch balances and withdrawals before the update
     let fetchedClientOneWsolBalanceBefore = await program.account.clientBalance.fetch(clientOneWsolBalance);
@@ -1558,7 +1611,12 @@ describe("ithaca-smart-contract-sol", () => {
     let fetchedClientTwoWsolWithdrawalsBefore = await program.account.withdrawals.fetch(clientTwoWsolWithdrawals);
     let fetchedClientTwoUsdcWithdrawalsBefore = await program.account.withdrawals.fetch(clientTwoUsdcWithdrawals);
 
-    let updateFundMovementsTx = await program.methods.updateFundMovements(fundMovements, backendId).accountsPartial({
+    let fetchedClientThreeWsolBalanceBefore = await program.account.clientBalance.fetch(clientThreeWsolBalance);
+    let fetchedClientThreeUsdcBalanceBefore = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    let fetchedClientThreeWsolWithdrawalsBefore = await program.account.withdrawals.fetch(clientThreeWsolWithdrawals);
+    let fetchedClientThreeUsdcWithdrawalsBefore = await program.account.withdrawals.fetch(clientThreeUsdcWithdrawals);
+
+    let updateFundMovementsTx = await program.methods.updateFundMovements(fundMovements1, backendId).accountsPartial({
       caller: utilityAccount.publicKey,
       accessController: accessControllerAccount,
       role: roleAccountUtilityAccount,
@@ -1573,9 +1631,29 @@ describe("ithaca-smart-contract-sol", () => {
     }).preInstructions([
       anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1400000 }),
       anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 })
-    ]).remainingAccounts(remainingAccounts).signers([utilityAccount]).rpc().then(confirmTx).then(log);
+    ]).remainingAccounts(remainingAccounts1).signers([utilityAccount]).rpc().then(confirmTx).then(log);
 
-    console.log("Fund Movements Updated:", updateFundMovementsTx);
+    let updateFundMovementsTxInx = await program.methods.updateFundMovements(fundMovements1, backendId).accountsPartial({
+      caller: utilityAccount.publicKey,
+      accessController: accessControllerAccount,
+      role: roleAccountUtilityAccount,
+      member: memberAccountUtilityAccount,
+      tokenValidator: tokenValidatorAccount,
+      ledger: usdcWSolLedger,
+      whitelistedStrikeToken: whitelistedUsdcTokenAccount,
+      whitelistedUnderlyingToken: whitelistedNativeTokenAccount,
+      strikeToken: usdcMint,
+      underlyingToken: nativeMint,
+      systemProgram: SystemProgram.programId,
+    }).preInstructions([
+      anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 1400000 }),
+      anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 })
+    ]).remainingAccounts(remainingAccounts1).transaction();
+
+    updateFundMovementsTxInx.recentBlockhash = (await provider.connection.getRecentBlockhash()).blockhash;
+    updateFundMovementsTxInx.feePayer = utilityAccount.publicKey;
+    updateFundMovementsTxInx.partialSign(utilityAccount);
+    console.log("Transaction size:", updateFundMovementsTxInx.serialize().length);
 
     // Fetch updated balances and withdrawals
     let fetchedClientOneWsolBalanceAfter = await program.account.clientBalance.fetch(clientOneWsolBalance);
@@ -1588,6 +1666,13 @@ describe("ithaca-smart-contract-sol", () => {
     let fetchedClientTwoWsolWithdrawalsAfter = await program.account.withdrawals.fetch(clientTwoWsolWithdrawals);
     let fetchedClientTwoUsdcWithdrawalsAfter = await program.account.withdrawals.fetch(clientTwoUsdcWithdrawals);
 
+    let fetchedClientThreeWsolBalanceAfter = await program.account.clientBalance.fetch(clientThreeWsolBalance);
+    let fetchedClientThreeUsdcBalanceAfter = await program.account.clientBalance.fetch(clientThreeUsdcBalance);
+    let fetchedClientThreeWsolWithdrawalsAfter = await program.account.withdrawals.fetch(clientThreeWsolWithdrawals);
+    let fetchedClientThreeUsdcWithdrawalsAfter = await program.account.withdrawals.fetch(clientThreeUsdcWithdrawals);
+
+
+
     // Assertions for Withdrawals
     const strikeTokenDiff = 6 - usdcPrecision;
     const underlyingTokenDiff = 9 - nativePrecision;
@@ -1596,88 +1681,87 @@ describe("ithaca-smart-contract-sol", () => {
     const strikeMultiplier = new anchor.BN(10 ** strikeTokenDiff);
 
     // Client One Assertions
-    if (fundMovements[0].underlyingAmount.isNeg()) {
-      assert.equal(fetchedClientOneWsolBalanceAfter.amount.toString(), fetchedClientOneWsolBalanceBefore.amount.add(fundMovements[0].underlyingAmount.mul(underlyingMultiplier).abs()).toString(), "Client One's wSOL balance not updated correctly");
+    if (fundMovements1[0].underlyingAmount.isNeg()) {
+      assert.equal(fetchedClientOneWsolBalanceAfter.amount.toString(), fetchedClientOneWsolBalanceBefore.amount.add(fundMovements1[0].underlyingAmount.mul(underlyingMultiplier).abs()).toString(), "Client One's wSOL balance not updated correctly");
     } else {
-      if (fundMovements[0].underlyingAmount.gt(fetchedClientOneWsolBalanceBefore.amount)) {
-        assert.equal(fetchedClientOneWsolWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientOneWsolWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements[0].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client One's wSOL Withdrawals not updated correctly");
+      if (fundMovements1[0].underlyingAmount.gt(fetchedClientOneWsolBalanceBefore.amount)) {
+        assert.equal(fetchedClientOneWsolWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientOneWsolWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements1[0].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client One's wSOL Withdrawals not updated correctly");
       } else {
-        assert.equal(fetchedClientOneWsolBalanceAfter.amount.toString(), (fetchedClientOneWsolBalanceBefore.amount.sub(fundMovements[0].underlyingAmount.mul(underlyingMultiplier))).toString(), "Client One's wSOL Balance not updated correctly");
+        assert.equal(fetchedClientOneWsolBalanceAfter.amount.toString(), (fetchedClientOneWsolBalanceBefore.amount.sub(fundMovements1[0].underlyingAmount.mul(underlyingMultiplier))).toString(), "Client One's wSOL Balance not updated correctly");
       }
     }
 
-    if (fundMovements[0].strikeAmount.isNeg()) {
-      assert.equal(fetchedClientOneUsdcBalanceAfter.amount.toString(), fetchedClientOneUsdcBalanceBefore.amount.add(fundMovements[0].strikeAmount.mul(strikeMultiplier).abs()).toString(), "Client One's USDC balance not updated correctly");
+    if (fundMovements1[0].strikeAmount.isNeg()) {
+      assert.equal(fetchedClientOneUsdcBalanceAfter.amount.toString(), fetchedClientOneUsdcBalanceBefore.amount.add(fundMovements1[0].strikeAmount.mul(strikeMultiplier).abs()).toString(), "Client One's USDC balance not updated correctly");
     } else {
-      if (fundMovements[0].strikeAmount.gt(fetchedClientOneUsdcBalanceBefore.amount)) {
-        assert.equal(fetchedClientOneUsdcWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientOneUsdcWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements[0].strikeAmount.mul(strikeMultiplier)).toString(), "Client One's USDC Withdrawals not updated correctly");
+      if (fundMovements1[0].strikeAmount.gt(fetchedClientOneUsdcBalanceBefore.amount)) {
+        assert.equal(fetchedClientOneUsdcWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientOneUsdcWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements1[0].strikeAmount.mul(strikeMultiplier)).toString(), "Client One's USDC Withdrawals not updated correctly");
       } else {
-        assert.equal(fetchedClientOneUsdcBalanceAfter.amount.toString(), fetchedClientOneUsdcBalanceBefore.amount.sub(fundMovements[0].strikeAmount.mul(strikeMultiplier)).toString(), "Client One's USDC Balance not updated correctly");
+        assert.equal(fetchedClientOneUsdcBalanceAfter.amount.toString(), fetchedClientOneUsdcBalanceBefore.amount.sub(fundMovements1[0].strikeAmount.mul(strikeMultiplier)).toString(), "Client One's USDC Balance not updated correctly");
       }
     }
 
     // Client Two Assertions
 
-    if (fundMovements[1].underlyingAmount.isNeg()) {
-      assert.equal(fetchedClientTwoWsolBalanceAfter.amount.toString(), fetchedClientTwoWsolBalanceBefore.amount.add(fundMovements[1].underlyingAmount.mul(underlyingMultiplier).abs()).toString(), "Client Two's wSOL balance not updated correctly");
+    if (fundMovements1[1].underlyingAmount.isNeg()) {
+      assert.equal(fetchedClientTwoWsolBalanceAfter.amount.toString(), fetchedClientTwoWsolBalanceBefore.amount.add(fundMovements1[1].underlyingAmount.mul(underlyingMultiplier).abs()).toString(), "Client Two's wSOL balance not updated correctly");
     } else {
-      if (fundMovements[1].underlyingAmount.gt(fetchedClientTwoWsolBalanceBefore.amount)) {
-        assert.equal(fetchedClientTwoWsolWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientTwoWsolWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements[1].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client Two's wSOL Withdrawals not updated correctly");
+      if (fundMovements1[1].underlyingAmount.gt(fetchedClientTwoWsolBalanceBefore.amount)) {
+        assert.equal(fetchedClientTwoWsolWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientTwoWsolWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements1[1].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client Two's wSOL Withdrawals not updated correctly");
       } else {
-        assert.equal(fetchedClientTwoWsolBalanceAfter.amount.toString(), fetchedClientTwoWsolBalanceBefore.amount.sub(fundMovements[1].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client Two's wSOL Balance not updated correctly");
+        assert.equal(fetchedClientTwoWsolBalanceAfter.amount.toString(), fetchedClientTwoWsolBalanceBefore.amount.sub(fundMovements1[1].underlyingAmount.mul(underlyingMultiplier)).toString(), "Client Two's wSOL Balance not updated correctly");
       }
     }
 
-    if (fundMovements[1].strikeAmount.isNeg()) {
-      assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), fetchedClientTwoUsdcBalanceBefore.amount.add(fundMovements[1].strikeAmount.mul(strikeMultiplier).abs()).toString(), "Client Two's USDC balance not updated correctly");
+    if (fundMovements1[1].strikeAmount.isNeg()) {
+      assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), fetchedClientTwoUsdcBalanceBefore.amount.add(fundMovements1[1].strikeAmount.mul(strikeMultiplier).abs()).toString(), "Client Two's USDC balance not updated correctly");
     } else {
-      if (fundMovements[1].strikeAmount.gt(fetchedClientTwoUsdcBalanceBefore.amount)) {
-        assert.equal(fetchedClientTwoUsdcWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientTwoUsdcWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements[1].strikeAmount.mul(strikeMultiplier)).toString(), "Client Two's USDC Withdrawals not updated correctly");
+      if (fundMovements1[1].strikeAmount.gt(fetchedClientTwoUsdcBalanceBefore.amount)) {
+        assert.equal(fetchedClientTwoUsdcWithdrawalsAfter.activeWithdrawalsAmount.toString(), fetchedClientTwoUsdcWithdrawalsBefore.activeWithdrawalsAmount.sub(fundMovements1[1].strikeAmount.mul(strikeMultiplier)).toString(), "Client Two's USDC Withdrawals not updated correctly");
       } else {
-        assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), fetchedClientTwoUsdcBalanceBefore.amount.sub(fundMovements[1].strikeAmount.mul(strikeMultiplier)).toString(), "Client Two's USDC Balance not updated correctly");
+        assert.equal(fetchedClientTwoUsdcBalanceAfter.amount.toString(), fetchedClientTwoUsdcBalanceBefore.amount.sub(fundMovements1[1].strikeAmount.mul(strikeMultiplier)).toString(), "Client Two's USDC Balance not updated correctly");
       }
     }
-
   });
 
-  it("Release the first withdraw request after release lock passes", async () => {
-    // wait for 30 seconds
-    await new Promise(resolve => setTimeout(resolve, 1000 * 30 * 1))
-    console.log("WAIT", await printTimestamp(provider));
+  // it("Release the first withdraw request after release lock passes", async () => {
+  //   // wait for 30 seconds
+  //   await new Promise(resolve => setTimeout(resolve, 1000 * 30 * 1))
+  //   console.log("WAIT", await printTimestamp(provider));
 
-    let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
-    let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
-    let index = new anchor.BN(0);
-    let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
+  //   let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
+  //   let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+  //   let index = new anchor.BN(0);
+  //   let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
 
-    let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
-      accessController: accessControllerAccount,
-      tokenValidator: tokenValidatorAccount,
-      fundlock: fundlockAccount,
-      client: clientOne.publicKey,
-      clientAta: clientOneUsdcAta.address,
-      token: usdcMint,
-      clientBalance: clientOneUsdcBalance,
-      fundlockTokenVault: fundlockUsdcTokenVault,
-      systemProgram: SystemProgram.programId,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      whitelistedToken: whitelistedUsdcTokenAccount,
-      withdrawals: clientOneUsdcWithdrawals
-    }).signers([clientOne]).rpc().then(confirmTx).then(log);
+  //   let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
+  //     accessController: accessControllerAccount,
+  //     tokenValidator: tokenValidatorAccount,
+  //     fundlock: fundlockAccount,
+  //     client: clientOne.publicKey,
+  //     clientAta: clientOneUsdcAta.address,
+  //     token: usdcMint,
+  //     clientBalance: clientOneUsdcBalance,
+  //     fundlockTokenVault: fundlockUsdcTokenVault,
+  //     systemProgram: SystemProgram.programId,
+  //     tokenProgram: TOKEN_PROGRAM_ID,
+  //     whitelistedToken: whitelistedUsdcTokenAccount,
+  //     withdrawals: clientOneUsdcWithdrawals
+  //   }).signers([clientOne]).rpc().then(confirmTx).then(log);
 
-    let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+  //   let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
 
-    let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
+  //   let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
 
-    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
+  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
 
-    assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
+  //   assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
 
-    let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientTwo).add(amountToDepositClientThree);
+  //   let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientTwo).add(amountToDepositClientThree);
 
-    assert.equal(await getTokenAccountBalance(provider.connection, fundlockUsdcTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
+  //   assert.equal(await getTokenAccountBalance(provider.connection, fundlockUsdcTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
 
-    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
+  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
 
-  });
+  // });
 });

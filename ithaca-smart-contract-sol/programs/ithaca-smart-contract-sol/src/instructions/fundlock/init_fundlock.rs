@@ -1,3 +1,4 @@
+use crate::error::FundlockError;
 use crate::state::access_controller_state::Role;
 use crate::state::fundlock_state::Fundlock;
 use crate::{AccessController, Member, Roles, TokenValidator};
@@ -46,6 +47,8 @@ impl<'info> InitFundlock<'info> {
         release_lock: i64,
         bumps: &InitFundlockBumps,
     ) -> Result<()> {
+        require!(trade_lock != 0, FundlockError::InvalidTradeLock);
+        require!(release_lock < 604800, FundlockError::ReleaseLockTooLong); // 604800 seconds = 1 week
         self.fundlock.set_inner(Fundlock {
             access_controller: self.access_controller.key(),
             token_validator: self.token_validator.key(),
@@ -53,7 +56,10 @@ impl<'info> InitFundlock<'info> {
             release_lock,
             bump: bumps.fundlock,
         });
-        msg!("Fundlock initialized successfully at {}", self.fundlock.key());
+        msg!(
+            "Fundlock initialized successfully at {}",
+            self.fundlock.key()
+        );
         Ok(())
     }
 }

@@ -20,7 +20,7 @@ pub struct UpdateFundMovements<'info> {
     )]
     pub role: Account<'info, Role>,
     #[account(
-        seeds = [b"member".as_ref(), role.key().as_ref(), caller.key().as_ref()],
+        seeds = [b"member".as_ref(), role.key().as_ref(), caller.key().as_ref()], 
         bump = member.bump
     )]
     pub member: Account<'info, Member>,
@@ -222,7 +222,7 @@ impl<'info> UpdateFundMovements<'info> {
                 client_balance_underlying
                     .try_serialize(&mut **client_balance_underlying_data)
                     .expect("Error Serializing Client Balance");
-                msg!("Client {} ew underlying balance: {}", clients[i * 2], client_balance_underlying.amount);
+                msg!("Client {} underlying balance: {}", clients[i * 2], client_balance_underlying.amount);
 
             }
 
@@ -292,6 +292,10 @@ impl<'info> UpdateFundMovements<'info> {
             Withdrawals::try_deserialize(&mut withdrawal_data.as_ref())
                 .expect("Error Deserializing Withdrawals");
         let withdrawals = &mut withdrawal_account_info.withdrawal_queue;
+        
+        // Cloning original data to rollback changes if funding is not successful
+        let original_withdrawals = withdrawals.clone();
+        let original_active_withdrawals_amount = withdrawal_account_info.active_withdrawals_amount;
 
         for index in 0..withdrawals.len() {
             if let Some(withdrawal) = withdrawals.get_mut(index) {
@@ -334,6 +338,14 @@ impl<'info> UpdateFundMovements<'info> {
                 }
             }
         }
+
+        // Rollback changes if funding is not successful
+        *withdrawals = original_withdrawals;
+        withdrawal_account_info.active_withdrawals_amount = original_active_withdrawals_amount;
+        withdrawal_account_info
+            .try_serialize(&mut **withdrawal_data)
+            .expect("Error Serializing Withdrawals");
+
         false
     }
 }

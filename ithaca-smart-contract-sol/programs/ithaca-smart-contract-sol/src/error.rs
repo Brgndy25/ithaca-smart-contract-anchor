@@ -38,6 +38,10 @@ pub enum FundlockError {
     InvalidAccountsAmount,
     #[msg("Account order for update balances violated")]
     AccountOrderViolated,
+    #[msg("The provided trade lock is invalid")]
+    InvalidTradeLock,
+    #[msg("The provided release lock is too long")]
+    ReleaseLockTooLong,
 }
 
 #[error_code]

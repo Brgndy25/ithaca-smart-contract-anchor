@@ -17,7 +17,7 @@ declare_id!("8VhqqahqVeiByDsa6FKo6Lmx94o4MTtQEBRruuAsbrSp");
 pub mod ithaca_smart_contract_sol {
     use std::cell::RefMut;
 
-    use anchor_lang::solana_program;
+    use anchor_lang::{solana_program, Discriminator};
 
     use super::*;
 
@@ -95,7 +95,6 @@ pub mod ithaca_smart_contract_sol {
         ctx.accounts.init_ledger(&ctx.bumps)
     }
 
-    // TODO! Try to refrac the code into a separate instruction for ledger
     pub fn create_contracts_and_positions<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateOrUpdatePositions<'info>>,
         position_params: Vec<PositionsParam>,
@@ -134,7 +133,7 @@ pub mod ithaca_smart_contract_sol {
                 LedgerError::AccountOrderViolated
             );
 
-            // Handle contract account creation (check for ownership with crate::ID)
+            // Handle contract account creation
             if contract_account_info.data_is_empty() {
                 let init_space = Contract::INIT_SPACE;
                 let lamports = Rent::get()?.minimum_balance(init_space);
@@ -154,7 +153,7 @@ pub mod ithaca_smart_contract_sol {
                         &ctx.accounts.caller.key,
                         &pda,
                         lamports,
-                        init_space as u64 - 8,
+                        init_space as u64,
                         ctx.program_id,
                     ),
                     &[
@@ -163,26 +162,26 @@ pub mod ithaca_smart_contract_sol {
                     ],
                     &[&signer],
                 )?;
-
-                let mut contract_data = contract_account_info
-                    .try_borrow_mut_data()
-                    .expect("Error borrowing contract data");
-                let mut contract_account = Contract::try_from_slice(&contract_data)?;
-                contract_account.contract_id = position.contract_id;
-                contract_account.bump = _contract_bump;
-                let data = &mut contract_account.try_to_vec()?;
-                contract_data[0..data.len()].copy_from_slice(data);
-            } else {
-                let mut contract_data = contract_account_info
-                    .try_borrow_mut_data()
-                    .expect("Error borrowing contract data");
-                let mut contract_account = Contract::try_from_slice(&contract_data)?;
-                contract_account.contract_id = position.contract_id;
-                contract_account.bump = _contract_bump;
-                let data = &mut contract_account.try_to_vec()?;
-                contract_data[0..data.len()].copy_from_slice(data);
             }
-            // Handle position account creation (check for ownership with crate::ID)
+
+            let contract_account = Contract {
+                contract_id: position.contract_id,
+                bump: _contract_bump,
+            };
+
+            let data = contract_account.try_to_vec()?;
+
+            let mut final_data = vec![0u8; 8 + data.len()]; // Account discriminator (8 bytes) + contract data
+            final_data[8..].copy_from_slice(&data);
+            final_data[0..8].copy_from_slice(&Contract::DISCRIMINATOR);
+            let mut contract_data = contract_account_info
+                .try_borrow_mut_data()
+                .expect("Error borrowing contract data");
+
+            // Copy the data to the account
+            contract_data[0..final_data.len()].copy_from_slice(&final_data);
+
+            // Handle position account creation
             if position_account_info.data_is_empty() {
                 let init_space = Position::INIT_SPACE;
                 let lamports = Rent::get()?.minimum_balance(init_space);
@@ -204,7 +203,7 @@ pub mod ithaca_smart_contract_sol {
                         &ctx.accounts.caller.key,
                         &pda,
                         lamports,
-                        init_space as u64 - 8,
+                        init_space as u64,
                         ctx.program_id,
                     ),
                     &[
@@ -213,33 +212,35 @@ pub mod ithaca_smart_contract_sol {
                     ],
                     &[&signer],
                 )?;
-
-                let position_data = &mut position_account_info
-                    .try_borrow_mut_data()
-                    .expect("Error borrowing position data");
-                let mut position_account = Position::try_from_slice(&position_data)?;
-                position_account.contract_id = position.contract_id;
-                position_account.client = position.client;
-                position_account.size = position.size;
-                position_account.bump = _position_bump;
-                let data = &mut position_account.try_to_vec()?;
-                position_data[0..data.len()].copy_from_slice(data);
-            } else {
-                let position_data = &mut position_account_info
-                    .try_borrow_mut_data()
-                    .expect("Error borrowing position data");
-                let mut position_account = Position::try_from_slice(&position_data)?;
-                position_account.contract_id = position.contract_id;
-                position_account.client = position.client;
-                position_account.size = position.size;
-                position_account.bump = _position_bump;
-                let data = &mut position_account.try_to_vec()?;
-                position_data[0..data.len()].copy_from_slice(data);
             }
-        }
 
+            let position_account = Position {
+                contract_id: position.contract_id,
+                client: position.client,
+                size: position.size,
+                bump: _position_bump,
+            };
+
+            let data = position_account.try_to_vec()?;
+
+            let mut final_data = vec![0u8; 8 + data.len()]; // Account discriminator (8 bytes) + position data
+            final_data[8..].copy_from_slice(&data);
+            final_data[0..8].copy_from_slice(&Position::DISCRIMINATOR);
+            let mut position_data = position_account_info
+                .try_borrow_mut_data()
+                .expect("Error borrowing position data");
+
+            // Copy the data to the account
+            position_data[0..final_data.len()].copy_from_slice(&final_data);
+        }
         Ok(())
     }
+
+    // pub fn print_contract_and_position_data(
+    //     ctx: Context<PrintContractAndPositionData>,
+    // ) -> Result<()> {
+    //     Ok(())
+    // }
 
     /// Expect accounts to be passed in order of:
     /// 0.Client Underlying Balance in remaining accounts[0]
@@ -249,6 +250,8 @@ pub mod ithaca_smart_contract_sol {
     /// 4.Client PK in FundMovementParam[0].client
     /// 5.Underlying amount in FundMovementParam[0].underlying_amount
     /// 6.Strike amount in FundMovementParam[0].strike_amount
+
+    // This is a ledger associatied instruction
 
     pub fn update_fund_movements(
         ctx: Context<UpdateFundMovements>,
@@ -290,8 +293,13 @@ pub mod ithaca_smart_contract_sol {
             backend_id,
         )
     }
+
+    pub fn dummy_for_idl(ctx: Context<DummyContextForIdl>) -> Result<()> {
+        Ok(())
+    }
 }
 
+// This is a ledger associatied instruction context
 #[derive(Accounts)]
 pub struct CreateOrUpdatePositions<'info> {
     #[account(mut)]
@@ -346,4 +354,13 @@ pub struct CreateOrUpdatePositions<'info> {
     )]
     pub ledger: Box<Account<'info, Ledger>>,
     pub system_program: Program<'info, System>,
+}
+
+// This is a dummy context to make sure we can fetch account data and have them in IDL
+#[derive(Accounts)]
+pub struct DummyContextForIdl<'info> {
+    #[account()]
+    pub contract_account: Box<Account<'info, Contract>>,
+    #[account()]
+    pub position_account: Box<Account<'info, Position>>,
 }
