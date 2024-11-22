@@ -177,7 +177,7 @@ impl<'info> UpdateFundMovements<'info> {
                 let mut client_balance_underlying =
                     ClientBalance::try_deserialize(&mut client_balance_underlying_data.as_ref())
                         .expect("Error Deserializing Client Balance");
-
+           
                         require!(
                             client_balance_underlying.token == tokens[i * 2] && client_balance_underlying.client == clients[i * 2],
                             FundlockError::AccountOrderViolated
@@ -195,15 +195,12 @@ impl<'info> UpdateFundMovements<'info> {
                     FundlockError::AccountOrderViolated
                 );
 
-                msg!("Client {} balance underlying before: {:?}", clients[i * 2], client_balance_underlying.amount.to_string());
-
                 let _change_in_underlying_balance: i64;
                 if amounts[i] > 0 || client_balance_underlying.amount >= amounts[i * 2].abs() as u64 {
                     _change_in_underlying_balance = amounts[i * 2];
                     msg!("Funding from client balance: client={}, amount={}, token={}", clients[i * 2], amounts[i * 2], tokens[i * 2]);
 
                 } else {
-                    msg!("Client {} underlying withdrawal active amount before: {}", clients[i * 2], withdrawals_underlying_account_info.active_withdrawals_amount);
                     let amount_to_deduct = amounts[i * 2].abs() as u64;
                     _change_in_underlying_balance = -(client_balance_underlying.amount as i64);
                     let shortage = amount_to_deduct - client_balance_underlying.amount;
@@ -248,13 +245,11 @@ impl<'info> UpdateFundMovements<'info> {
                 FundlockError::AccountOrderViolated
             );
 
-                msg!("Client {} balance strike before: {:?}", clients[i * 2 + 1], client_balance_strike.amount.to_string());
             let _change_in_strike_balance: i64;
             if amounts[i *2 +1] > 0 || client_balance_strike.amount >= amounts[i * 2 +1].abs() as u64 {
                 _change_in_strike_balance = amounts[i * 2 +1];
                 msg!("Funding from client balance: client={}, amount={}, token={}", clients[i * 2 + 1], amounts[i* 2 + 1], tokens[i * 2 + 1]);
             } else {
-                msg!("Client {} strike withdrawal active amount before: {}", clients[i * 2 + 1], withdrawals_strike_account_info.active_withdrawals_amount);
                 let amount_to_deduct = amounts[i * 2 + 1].abs() as u64;
                 _change_in_strike_balance = -(client_balance_strike.amount as i64);
                 let shortage = amount_to_deduct - client_balance_strike.amount;

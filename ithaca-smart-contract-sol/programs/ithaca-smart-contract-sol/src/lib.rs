@@ -11,7 +11,7 @@ use error::{LedgerError, TokenValidatorError};
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("8VhqqahqVeiByDsa6FKo6Lmx94o4MTtQEBRruuAsbrSp");
+declare_id!("453oGKKhp9Ai64DJjdgUR7YxJA2uAn5edyaEfopZ7EQ7");
 
 #[program]
 pub mod ithaca_smart_contract_sol {
@@ -236,28 +236,13 @@ pub mod ithaca_smart_contract_sol {
         Ok(())
     }
 
-    // pub fn print_contract_and_position_data(
-    //     ctx: Context<PrintContractAndPositionData>,
-    // ) -> Result<()> {
-    //     Ok(())
-    // }
-
-    /// Expect accounts to be passed in order of:
-    /// 0.Client Underlying Balance in remaining accounts[0]
-    /// 1.Client Strike Balance in remaining accounts[1]
-    /// 2.Withdrawals associated with the client underlying balance in remaining accounts[2]
-    /// 3.Withdrawals associated with the client strike balance in remaining accounts[3]
-    /// 4.Client PK in FundMovementParam[0].client
-    /// 5.Underlying amount in FundMovementParam[0].underlying_amount
-    /// 6.Strike amount in FundMovementParam[0].strike_amount
-
-    // This is a ledger associatied instruction
-
     pub fn update_fund_movements(
         ctx: Context<UpdateFundMovements>,
-        fund_movements: Vec<FundMovementParam>,
+        fund_movements: Vec<FundMovementParamOptimized>,
         backend_id: u64,
     ) -> Result<()> {
+        let mut fund_movements_final: Vec<FundMovementParam> = Vec::new();
+
         let mut client_balance_underlying_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
         let mut client_balance_strike_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
         let mut withdrawals_underlying_account_datas: Vec<RefMut<'_, &mut [u8]>> = Vec::new();
@@ -284,8 +269,39 @@ pub mod ithaca_smart_contract_sol {
                 .expect("Error borrowing data");
             withdrawals_strike_account_datas.push(withdrawals_strike_data);
         }
+
+        for i in 0..fund_movements.len() {
+            let underlying_balance_client_pk = ClientBalance::try_deserialize(
+                &mut client_balance_underlying_account_datas[i].as_ref(),
+            )?
+            .client;
+            let strike_balance_client_pk = ClientBalance::try_deserialize(
+                &mut client_balance_strike_account_datas[i].as_ref(),
+            )?
+            .client;
+            let withdrawals_underlying_client_pk = Withdrawals::try_deserialize(
+                &mut withdrawals_underlying_account_datas[i].as_ref(),
+            )?
+            .client;
+            let withdrawals_strike_client_pk =
+                Withdrawals::try_deserialize(&mut withdrawals_strike_account_datas[i].as_ref())?
+                    .client;
+
+            require!(
+                underlying_balance_client_pk == strike_balance_client_pk
+                    && withdrawals_underlying_client_pk == withdrawals_strike_client_pk
+                    && underlying_balance_client_pk == withdrawals_strike_client_pk,
+                LedgerError::AccountOrderViolated
+            );
+            fund_movements_final.push(FundMovementParam {
+                client: underlying_balance_client_pk,
+                underlying_amount: fund_movements[i].underlying_amount,
+                strike_amount: fund_movements[i].strike_amount,
+            });
+        }
+
         ctx.accounts.update_fund_movements(
-            fund_movements,
+            fund_movements_final,
             client_balance_underlying_account_datas,
             withdrawals_underlying_account_datas,
             client_balance_strike_account_datas,

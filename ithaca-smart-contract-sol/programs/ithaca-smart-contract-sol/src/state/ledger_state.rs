@@ -45,6 +45,12 @@ pub struct FundMovementParam {
     pub strike_amount: i64,
 }
 
+#[account]
+pub struct FundMovementParamOptimized {
+    pub underlying_amount: i64,
+    pub strike_amount: i64,
+}
+
 impl Space for Ledger {
     const INIT_SPACE: usize = 8 + // account discriminator
     32 + // access_controller

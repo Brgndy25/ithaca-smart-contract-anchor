@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-ithaca_smart_contract_sol = "8VhqqahqVeiByDsa6FKo6Lmx94o4MTtQEBRruuAsbrSp"
+ithaca_smart_contract_sol = "453oGKKhp9Ai64DJjdgUR7YxJA2uAn5edyaEfopZ7EQ7"
 
 [registry]
 url = "https://api.apr.dev"
