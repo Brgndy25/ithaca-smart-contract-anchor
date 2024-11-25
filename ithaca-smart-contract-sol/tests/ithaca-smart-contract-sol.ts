@@ -19,7 +19,6 @@ import {
   sendAndConfirmTransaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { set } from "@coral-xyz/anchor/dist/cjs/utils/features";
 
 const assert = require("assert");
 
@@ -270,7 +269,6 @@ describe("ithaca-smart-contract-sol", () => {
       ],
       program.programId
     )[0];
-
 
     roleAccountAdmin = PublicKey.findProgramAddressSync(
       [
@@ -1722,24 +1720,6 @@ describe("ithaca-smart-contract-sol", () => {
       assert.equal(fetchedClientOneUsdcWithdrawals.withdrawalQueue[i].amount.toString(), withdrawAmount.toString(), `Client One's USDC Withdrawal index ${i} Amount should not have changed`);
     }
   });
-
-  it("Should print the balance sheet", async () => {
-    let balanceSheet = await program.methods.balanceSheetFundlock().accountsPartial({
-      caller: payer.publicKey,
-      client: clientOne.publicKey,
-      accessController: accessControllerAccount,
-      role: roleAccountAdmin,
-      token: usdcMint,
-      fundlock: fundlockAccount,
-      fundlockTokenVault: fundlockUsdcTokenVault,
-      clientAta: clientOneUsdcAta.address,
-      clientBalance: clientOneUsdcBalance,
-      whitelistedToken: whitelistedUsdcTokenAccount,
-      tokenValidator: tokenValidatorAccount,
-      systemProgram: SystemProgram.programId,
-    }).signers([payer]).rpc().then(log);
-  });
-
 
   it("Try to release the first withdraw request while release lock is active (should fail)", async () => {
     let index = new anchor.BN(0);
