@@ -47,7 +47,7 @@ anchor build
 1. Ensure your Solana CLI is configured for the devnet cluster:
 
 ```console
-solana config set --url https://api.testnet.solana.com
+solana config set --url https://api.devnet.solana.com
 ```
 
 2. Deploy the program to the devnet cluster:
