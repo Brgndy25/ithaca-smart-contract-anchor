@@ -94,6 +94,7 @@ pub mod ithaca_smart_contract_sol {
     pub fn create_contracts_and_positions<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateOrUpdatePositions<'info>>,
         position_params: Vec<PositionsParam>,
+        backend_id: u64,
     ) -> Result<()> {
         let remaining_accounts = &ctx.remaining_accounts;
 
@@ -229,6 +230,7 @@ pub mod ithaca_smart_contract_sol {
             // Copy the data to the account
             position_data[0..final_data.len()].copy_from_slice(&final_data);
         }
+        msg!("Backend ID: {}", backend_id);
         Ok(())
     }
 
