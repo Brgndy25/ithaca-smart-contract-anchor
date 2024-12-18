@@ -1,6 +1,7 @@
 # Ithaca Smart Contract
 
 This project is a Solana program written using the Anchor framework. Follow the instructions below to deploy the program and configure the authority.
+Made for Ithaca Option Protocol
 
 ## Prerequisites
 
