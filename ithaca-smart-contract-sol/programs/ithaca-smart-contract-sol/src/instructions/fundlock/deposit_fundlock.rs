@@ -91,6 +91,7 @@ impl<'info> DepositFundlock<'info> {
             token: self.token.key(),
             client: self.client.key(),
             client_ata: self.client_ata.key(),
+            collateral_amount: self.client_balance.collateral_amount,
             bump: bumps.client_balance,
         });
 

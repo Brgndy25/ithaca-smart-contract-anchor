@@ -7,7 +7,8 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
     "@solana/spl-token": "^0.4.9",
-    "@solana/web3.js": "^1.95.4"
+    "@solana/web3.js": "^1.95.4",
+    "wrap-sol": "^0.1.0"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",

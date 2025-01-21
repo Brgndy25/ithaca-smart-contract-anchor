@@ -17,6 +17,7 @@ pub struct ClientBalance {
     pub token: Pubkey,
     pub client: Pubkey,
     pub client_ata: Pubkey,
+    pub collateral_amount: u64,
     pub bump: u8,
 }
 
@@ -49,6 +50,7 @@ impl Space for ClientBalance {
     32 + // token pubkey
     32 + // client pubkey
     32 + // client ata pubkey
+    8 + // collateral amount
     1; // bump
 }
 

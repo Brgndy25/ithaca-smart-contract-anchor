@@ -9,3 +9,6 @@ pub use fundlock::*;
 
 pub mod ledger;
 pub use ledger::*;
+
+pub mod kamino_lend_staking;
+pub use kamino_lend_staking::*;

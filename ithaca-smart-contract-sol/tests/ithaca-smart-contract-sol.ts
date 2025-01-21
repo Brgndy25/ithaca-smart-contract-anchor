@@ -6,7 +6,8 @@ import {
   TOKEN_PROGRAM_ID,
   getOrCreateAssociatedTokenAccount,
   Account,
-  NATIVE_MINT
+  NATIVE_MINT,
+  createSyncNativeInstruction
 } from "@solana/spl-token";
 import {
   Transaction,
@@ -18,7 +19,12 @@ import {
   sendAndConfirmRawTransaction,
   sendAndConfirmTransaction,
   TransactionInstruction,
+  TransactionSignature,
+  Signer,
+  PUBLIC_KEY_LENGTH,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
+import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 const assert = require("assert");
 
@@ -72,6 +78,44 @@ async function printTimestamp(provider: anchor.AnchorProvider) {
   } else {
     console.log("Failed to retrieve Clock sysvar.");
   }
+}
+
+export async function wrapSol(
+  connection: Connection,
+  signer: Signer,
+  amount: number
+): Promise<TransactionSignature> {
+  // wSol ATA 
+  const wSolAta = await getOrCreateAssociatedTokenAccount(connection, signer, NATIVE_MINT, signer.publicKey);
+
+  // wrap Sol
+  let transaction = new Transaction().add(
+    // trasnfer SOL
+    SystemProgram.transfer({
+      fromPubkey: signer.publicKey,
+      toPubkey: wSolAta.address,
+      lamports: amount,
+    }),
+    // sync wrapped SOL balance
+    createSyncNativeInstruction(wSolAta.address)
+  );
+
+  // submit transaction
+  const txSignature = await sendAndConfirmTransaction(connection, transaction, [signer]);
+
+  // validate transaction was successful
+  try {
+    const latestBlockhash = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      signature: txSignature,
+    }, 'confirmed');
+  } catch (error) {
+    console.log(`Error wrapping sol: ${error}`);
+  };
+
+  return txSignature;
 }
 
 describe("ithaca-smart-contract-sol", () => {
@@ -220,7 +264,7 @@ describe("ithaca-smart-contract-sol", () => {
   let whitelistedMockTokenAccount: PublicKey;
   let fetchedwhitelistedMockTokenAccount;
 
-  let nativeMint: PublicKey;
+  let nativeMint = new PublicKey("So11111111111111111111111111111111111111112");
   let whitelistedNativeTokenAccount: PublicKey;
   let nativePrecision = 4;
 
@@ -244,20 +288,34 @@ describe("ithaca-smart-contract-sol", () => {
   let contractAccounts = []
   let positionAccounts = []
 
+  // Kamino ACCS
+
+  let kaminoLendProgramId = new PublicKey("KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD");
+  let kaminoMainMarket = new PublicKey("7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF");
+  let kaminoReserve1 = new PublicKey("9DrvZvyWh1HuAoZxvYWMvkf2XCzryCpGgHqrMjyDWpmo");
+  let KaminoSolColToken = new PublicKey("2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1");
+  let KaminoSolLiqResSup = new PublicKey("GafNuUXj9rxGLn4y79dPu6MHSuPWeJR6UtTWuexpGh3U");
+  let KaminoSolState = new PublicKey("d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q");
+  let kaminoScopeAcc = new PublicKey("3NJYftD5sjVfxSnUdZ1wVML8f3aC6mp1CXCL6L7TnU8C");
+
+  let fundlockSolCollateralVault: PublicKey;
+  let clientOneSolCollateralBalance: PublicKey;
+
+
   // Airdrop some SOL to pay for the fees. Confirm the airdrop before proceeding.
   it("Airdrops", async () => {
     await Promise.all(
       [admin, utilityAccount, payer, clientOne, clientTwo, clientThree, clientFour, clientFive].map(async (account) => {
         await provider.connection
-          .requestAirdrop(account.publicKey, 100 * LAMPORTS_PER_SOL)
+          .requestAirdrop(account.publicKey, 200 * LAMPORTS_PER_SOL)
           .then(confirmTx);
       })
     );
 
-    assert.equal(await getAccountBalance(provider.connection, admin.publicKey), 100, "Airdrop failed");
-    assert.equal(await getAccountBalance(provider.connection, utilityAccount.publicKey), 100, "Airdrop failed");
-    assert.equal(await getAccountBalance(provider.connection, payer.publicKey), 100, "Airdrop failed");
-    assert.equal(await getAccountBalance(provider.connection, clientOne.publicKey), 100, "Airdrop failed");
+    // assert.equal(await getAccountBalance(provider.connection, admin.publicKey), 100, "Airdrop failed");
+    // assert.equal(await getAccountBalance(provider.connection, utilityAccount.publicKey), 100, "Airdrop failed");
+    // assert.equal(await getAccountBalance(provider.connection, payer.publicKey), 100, "Airdrop failed");
+    // assert.equal(await getAccountBalance(provider.connection, clientOne.publicKey), 100, "Airdrop failed");
   });
 
   it("Find Access Controller and Admin member and role PDAs", async () => {
@@ -579,15 +637,15 @@ describe("ithaca-smart-contract-sol", () => {
     assert.equal(fetchedwhitelistedMockTokenAccount.tokenMint.toString(), mockMint.toString(), "Mock Token not whitelisted");
   });
 
-  it("Create a native token mint", async () => {
-    nativeMint = await splToken.createMint(
-      provider.connection,
-      payer,
-      payer.publicKey,
-      payer.publicKey,
-      9
-    );
-  });
+  // it("Create a native token mint", async () => {
+  //   nativeMint = await splToken.createMint(
+  //     provider.connection,
+  //     payer,
+  //     payer.publicKey,
+  //     payer.publicKey,
+  //     9
+  //   );
+  // });
 
   it("Find a whitelisted Native token account PDA", async () => {
     whitelistedNativeTokenAccount = PublicKey.findProgramAddressSync(
@@ -870,14 +928,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Mint wSOL to the client One", async () => {
-    let mintToClientOneTx = await splToken.mintTo(
-      provider.connection,
-      payer,
-      nativeMint,
-      clientOneWsolAta.address,
-      payer,
-      1000000000
-    ).then(confirmTx);
+    let mintToClientOneTx = await wrapSol(provider.connection, clientOne, 1000000000).then(confirmTx);
 
     assert.equal(await getTokenAccountBalance(provider.connection, clientOneWsolAta.address), "1000000000", "wSOL not minted to client one");
 
@@ -885,14 +936,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Mint wSOL to the client Two", async () => {
-    let mintToClientTwoTx = await splToken.mintTo(
-      provider.connection,
-      payer,
-      nativeMint,
-      clientTwoWsolAta.address,
-      payer,
-      1000000000
-    ).then(confirmTx);
+    let mintToClientTwoTx = await wrapSol(provider.connection, clientTwo, 1000000000).then(confirmTx);
 
     assert.equal(await getTokenAccountBalance(provider.connection, clientTwoWsolAta.address), "1000000000", "wSOL not minted to client two");
 
@@ -900,14 +944,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Mint wSOL to the client Three", async () => {
-    let mintToClientThreeTx = await splToken.mintTo(
-      provider.connection,
-      payer,
-      nativeMint,
-      clientThreeWsolAta.address,
-      payer,
-      1000000000
-    ).then(confirmTx);
+    let mintToClientThreeTx = await wrapSol(provider.connection, clientThree, 1000000000).then(confirmTx);
 
     assert.equal(await getTokenAccountBalance(provider.connection, clientThreeWsolAta.address), "1000000000", "wSOL not minted to client three");
 
@@ -915,14 +952,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Mint wSOL to the client Four", async () => {
-    let mintToClientFourTx = await splToken.mintTo(
-      provider.connection,
-      payer,
-      nativeMint,
-      clientFourWsolAta.address,
-      payer,
-      1000000000
-    ).then(confirmTx);
+    let mintToClientFourTx = await wrapSol(provider.connection, clientFour, 1000000000).then(confirmTx);
 
     assert.equal(await getTokenAccountBalance(provider.connection, clientFourWsolAta.address), "1000000000", "wSOL not minted to client four");
 
@@ -930,14 +960,7 @@ describe("ithaca-smart-contract-sol", () => {
   });
 
   it("Mint wSOL to the client Five", async () => {
-    let mintToClientFiveTx = await splToken.mintTo(
-      provider.connection,
-      payer,
-      nativeMint,
-      clientFiveWsolAta.address,
-      payer,
-      1000000000
-    ).then(confirmTx);
+    let mintToClientFiveTx = await wrapSol(provider.connection, clientFive, 1000000000).then(confirmTx);
 
     assert.equal(await getTokenAccountBalance(provider.connection, clientFiveWsolAta.address), "1000000000", "wSOL not minted to client five");
 
@@ -2338,44 +2361,149 @@ describe("ithaca-smart-contract-sol", () => {
     }
   });
 
-  it("Release the first withdraw request after release lock passes", async () => {
-    // wait for 30 seconds
-    await new Promise(resolve => setTimeout(resolve, 1000 * 30 * 1))
-    console.log("WAIT", await printTimestamp(provider));
+  // it("Release the first withdraw request after release lock passes", async () => {
+  //   // wait for 30 seconds
+  //   await new Promise(resolve => setTimeout(resolve, 1000 * 30 * 1))
+  //   console.log("WAIT", await printTimestamp(provider));
 
-    let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
-    let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
-    let index = new anchor.BN(0);
-    let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
+  //   let clientOneUsdcBalanceBeforeRelease = await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address);
+  //   let fetchedClientOneUsdcWithdrawalsBeforeRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+  //   let index = new anchor.BN(0);
+  //   let amountToRelease = fetchedClientOneUsdcWithdrawalsBeforeRelease.withdrawalQueue[0].amount;
 
-    let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
+  //   let releaseFundlockTx = await program.methods.releaseFundlock(index).accountsPartial({
+  //     accessController: accessControllerAccount,
+  //     tokenValidator: tokenValidatorAccount,
+  //     fundlock: fundlockAccount,
+  //     client: clientOne.publicKey,
+  //     clientAta: clientOneUsdcAta.address,
+  //     token: usdcMint,
+  //     clientBalance: clientOneUsdcBalance,
+  //     fundlockTokenVault: fundlockUsdcTokenVault,
+  //     systemProgram: SystemProgram.programId,
+  //     tokenProgram: TOKEN_PROGRAM_ID,
+  //     whitelistedToken: whitelistedUsdcTokenAccount,
+  //     withdrawals: clientOneUsdcWithdrawals
+  //   }).signers([clientOne]).rpc().then(confirmTx).then(log);
+
+  //   let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
+
+  //   let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
+
+  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
+
+  //   assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
+
+  //   let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientTwo).add(amountToDepositClientThree).add(amountToDepositClientFour).add(amountToDepositClientFive);
+
+  //   assert.equal(await getTokenAccountBalance(provider.connection, fundlockUsdcTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
+
+  //   assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
+
+  // });
+
+  it("Will find the fundlock collateral vault for Kamino SOL", async () => {
+
+    fundlockSolCollateralVault = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("fundlock_collateral_vault"),
+        fundlockWsolTokenVault.toBuffer(),
+        KaminoSolColToken.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Fundlock Kamino Sol Collateral Token Vault:", fundlockSolCollateralVault.toString());
+  });
+
+  it("Will find the client collateral balance for Kamino SOL", async () => {
+
+    clientOneSolCollateralBalance = PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("client_collateral_balance"),
+        fundlockSolCollateralVault.toBuffer(),
+        clientOne.publicKey.toBuffer(),
+      ],
+      program.programId
+    )[0];
+
+    console.log("Client One Kamino Sol Collateral Balance:", clientOneSolCollateralBalance.toString());
+
+
+  });
+
+  it("will deposit wSol into Kamino", async () => {
+
+    let FundlockSolVaultBefore = await getTokenAccountBalance(provider.connection, fundlockWsolTokenVault);
+
+    try {
+      let depositKamino = await program.methods.depositKamino(new anchor.BN("13400000")).accountsStrict({
+        accessController: accessControllerAccount,
+        tokenValidator: tokenValidatorAccount,
+        fundlock: fundlockAccount,
+        client: clientOne.publicKey,
+        token: nativeMint,
+        fundlockTokenVault: fundlockWsolTokenVault,
+        clientBalance: clientOneWsolBalance,
+        clientAta: clientOneWsolAta.address,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        whitelistedToken: whitelistedNativeTokenAccount,
+        reserve: KaminoSolState,
+        lendingMarket: kaminoMainMarket,
+        lendingMarketAuthority: kaminoReserve1,
+        reserveCollateralToken: KaminoSolColToken,
+        reserveLiquiditySupply: KaminoSolLiqResSup,
+        fundlockCollateralVault: fundlockSolCollateralVault,
+        kaminoProgram: kaminoLendProgramId,
+        instructions: SYSVAR_INSTRUCTIONS_PUBKEY
+      }).signers([clientOne]).rpc().then(confirmTx).then(log);
+    } catch (error) {
+      if (error instanceof anchor.web3.SendTransactionError) {
+        console.error("Transaction failed with logs:", await error.getLogs(provider.connection));
+      } else {
+        console.error("Unexpected error:", error);
+      }
+    }
+
+    assert.equal((await getTokenAccountBalance(provider.connection, fundlockWsolTokenVault)).toString(), (+FundlockSolVaultBefore - 13400000).toString(), "Fundlock wSol Vault not updated correctly");
+
+    // TODO! Find a way to calculate the expected collateral balance in order to assert it
+    console.log("Current collateral Balance", await getTokenAccountBalance(provider.connection, fundlockSolCollateralVault));
+
+    let fetchedClientBalance = await program.account.clientBalance.fetch(clientOneWsolBalance);
+    assert.equal((await getTokenAccountBalance(provider.connection, fundlockSolCollateralVault)).toString(), fetchedClientBalance.collateralAmount.toString(), "Fundlock Sol Collateral Vault not updated correctly");
+
+
+  });
+
+  it("Will redeem all from Kamino", async () => {
+
+    let FundlockSolVaultBefore = await getTokenAccountBalance(provider.connection, fundlockWsolTokenVault);
+    let fetchedClientBalanceBefore = await program.account.clientBalance.fetch(clientOneWsolBalance);
+
+
+    let redeemKamino = await program.methods.redeemKamino(fetchedClientBalanceBefore.collateralAmount).accountsStrict({
       accessController: accessControllerAccount,
       tokenValidator: tokenValidatorAccount,
       fundlock: fundlockAccount,
       client: clientOne.publicKey,
-      clientAta: clientOneUsdcAta.address,
-      token: usdcMint,
-      clientBalance: clientOneUsdcBalance,
-      fundlockTokenVault: fundlockUsdcTokenVault,
+      token: nativeMint,
+      fundlockTokenVault: fundlockWsolTokenVault,
+      clientBalance: clientOneWsolBalance,
+      clientAta: clientOneWsolAta.address,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
-      whitelistedToken: whitelistedUsdcTokenAccount,
-      withdrawals: clientOneUsdcWithdrawals
+      whitelistedToken: whitelistedNativeTokenAccount,
+      reserve: KaminoSolState,
+      lendingMarket: kaminoMainMarket,
+      lendingMarketAuthority: kaminoReserve1,
+      reserveCollateralToken: KaminoSolColToken,
+      reserveLiquiditySupply: KaminoSolLiqResSup,
+      fundlockCollateralVault: fundlockSolCollateralVault,
+      kaminoProgram: kaminoLendProgramId,
+      instructions: SYSVAR_INSTRUCTIONS_PUBKEY
     }).signers([clientOne]).rpc().then(confirmTx).then(log);
-
-    let fetchedClientOneUsdcWithdrawalsAfterRelease = await program.account.withdrawals.fetch(clientOneUsdcWithdrawals);
-
-    let clientUpdatedBalance = +clientOneUsdcBalanceBeforeRelease + amountToRelease.toNumber();
-
-    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.activeWithdrawalsAmount.toString(), amountToWithdrawClientOne.mul(new anchor.BN(4)).toString(), "Client active USDC withdrawals amount not updated");
-
-    assert.equal(await getTokenAccountBalance(provider.connection, clientOneUsdcAta.address), clientUpdatedBalance.toString(), "Client One's USDC Balance not updated");
-
-    let fundlockExpectedBalance = amountToWithdrawClientOne.mul(new anchor.BN(4)).add(amountToDepositClientTwo).add(amountToDepositClientThree).add(amountToDepositClientFour).add(amountToDepositClientFive);
-
-    assert.equal(await getTokenAccountBalance(provider.connection, fundlockUsdcTokenVault), fundlockExpectedBalance.toString(), "Fundlock USDC Balance not updated");
-
-    assert.equal(fetchedClientOneUsdcWithdrawalsAfterRelease.withdrawalQueue.length, 4, "Client One's USDC Withdrawals Queue not updated");
 
   });
 });

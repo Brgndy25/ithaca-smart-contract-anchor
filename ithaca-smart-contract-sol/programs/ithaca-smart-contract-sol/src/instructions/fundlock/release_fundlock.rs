@@ -82,7 +82,7 @@ impl<'info> ReleaseFundlock<'info> {
         );
 
         let amount_released = self.withdrawals.withdrawal_queue[index as usize].amount;
-
+        
         let cpi_accounts = Transfer {
             from: self.fundlock_token_vault.to_account_info(),
             to: self.client_ata.to_account_info(),

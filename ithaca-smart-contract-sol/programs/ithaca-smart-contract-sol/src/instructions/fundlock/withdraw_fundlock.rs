@@ -37,6 +37,7 @@ pub struct WithdrawFundlock<'info> {
     )]
     pub whitelisted_token: Box<Account<'info, WhitelistedToken>>,
     #[account(
+        mut,
         seeds = [b"fundlock_token_vault".as_ref(), fundlock.key().as_ref(), token.key().as_ref()],
         token::mint = token,
         token::authority = fundlock,
@@ -88,6 +89,7 @@ impl<'info> WithdrawFundlock<'info> {
             token: self.token.key(),
             client: self.client.key(),
             client_ata: self.client_ata.key(),
+            collateral_amount: self.client_balance.collateral_amount,
             bump: self.client_balance.bump,
         });
 

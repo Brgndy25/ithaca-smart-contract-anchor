@@ -1,4 +1,17 @@
+use anchor_lang::prelude::*;
+use std::str::FromStr;
+
 pub const ALLOWED_WITHDRAWAL_LIMIT: usize = 5;
+pub const KAMINO_PROGRAM_ID: &str = "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD";
+
+#[derive(Clone)]
+pub struct KLend;
+
+impl anchor_lang::Id for KLend {
+    fn id() -> Pubkey {
+        Pubkey::from_str(KAMINO_PROGRAM_ID).unwrap()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Roles {

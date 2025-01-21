@@ -11,7 +11,7 @@ use error::{LedgerError, TokenValidatorError};
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("453oGKKhp9Ai64DJjdgUR7YxJA2uAn5edyaEfopZ7EQ7");
+declare_id!("7ZfvciPFb5Cuy7BSpPFg8zs43qqZ4CpnskfhbKCNFs7n");
 
 #[program]
 pub mod ithaca_smart_contract_sol {
@@ -306,6 +306,14 @@ pub mod ithaca_smart_contract_sol {
             withdrawals_strike_account_datas,
             backend_id,
         )
+    }
+
+    pub fn deposit_kamino(ctx: Context<DepositKamino>, amount: u64) -> Result<()> {
+        ctx.accounts.deposit_kamino(amount)
+    }
+
+    pub fn redeem_kamino(ctx: Context<ReedemKamino>, amount: u64) -> Result<()> {
+        ctx.accounts.redeem_kamino(amount)
     }
 
     //This is a dummy function to make sure we can fetch account data and have them in IDL
