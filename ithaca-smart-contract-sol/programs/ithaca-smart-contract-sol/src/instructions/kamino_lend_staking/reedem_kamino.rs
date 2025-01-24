@@ -95,7 +95,7 @@ pub struct ReedemKamino<'info> {
 impl<'info> ReedemKamino<'info> {
     pub fn redeem_kamino(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, FundlockError::AmountZero);
-        require!(self.client_balance.collateral_amount >= amount, FundlockError::InsufficientBalance);
+        require!(self.client_balance.collateral_amount >= amount, FundlockError::InsufficientFunds);
 
         let fundlock_token_vault_balance_before = self.fundlock_token_vault.amount;
 
