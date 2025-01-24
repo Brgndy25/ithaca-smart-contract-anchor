@@ -96,6 +96,7 @@ pub struct DepositKamino<'info> {
 impl<'info> DepositKamino<'info> {
     pub fn deposit_kamino(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, FundlockError::AmountZero);
+        require!(self.client_balance.amount >= amount, FundlockError::InsufficientBalance);
 
         let access_validator_key = self.access_controller.key();
         let token_validator_key = self.token_validator.key();
