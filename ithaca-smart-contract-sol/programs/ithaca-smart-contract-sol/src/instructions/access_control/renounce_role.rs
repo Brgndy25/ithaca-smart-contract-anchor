@@ -34,6 +34,9 @@ impl<'info> RenounceRole<'info> {
     // Will renounce the role according to the signer's pubkey
     pub fn renounce_role(&mut self, _role_renounced: String, _member_pk: Pubkey) -> Result<()> {
         require!(self.role.member_count != 1, AccessControlError::LastMember);
+
+        self.role.member_count -= 1;
+        
         Ok(())
     }
 }
